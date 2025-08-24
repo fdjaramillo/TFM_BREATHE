@@ -1,0 +1,13 @@
+# add scripts folder to the path macOS
+# Abre el archivo de configuración del shell
+nano ~/.zshrc
+
+# Añade esta línea al final:
+export PATH="$HOME/Documents/Msc-Omics-Data-Analysis/TFM/TFM_BREATHE/02_scripts:$PATH"
+
+# Guarda y recarga la config
+source ~/.zshrc
+
+# Powershell
+$env:Path += ";C:\Users\TuUsuario\TFM_BREATHE\02_scripts"
+

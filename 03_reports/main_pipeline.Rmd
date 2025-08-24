@@ -1,0 +1,1053 @@
+---
+title: "BREATHE_baseline_visit"
+output: 
+  BiocStyle::html_document:
+    number_sections: false
+    toc: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE)
+library(tidyverse)
+library(data.table)
+library(stringi)
+library(stringr)
+```
+
+# Load and transform data
+### MACRO
+
+```{r load and transform}
+path <- "../00_data_raw/v1.0_2025-08-20/macro_download/processed"
+macro_files <- list.files(path, full.names = TRUE)
+macro_names <- macro_files |> str_remove(path) |> str_remove("\\/") |> str_remove("\\.csv$")
+
+macro_data <- lapply(macro_files, read_csv, show_col_types = FALSE, col_types = cols(
+  id = col_character(),
+  question = col_character(),
+  value = col_character(),
+  status = col_character()
+))
+names(macro_data) <- macro_names
+
+# replacements dict
+rename_dict_question <- c(
+  "allergic_sensitization" = "sensitization",
+  "prick_test_collected_in_the_last_3_years" = "prick_test_last_3y",
+  "specified_1" = "specify_1",
+  
+  "other_comorbidity_1" = "others_comorbidities_1",
+  
+  "age_years" = "age",
+  "biiological_sex" = "sex",
+  "does_have_descendents" = "has_descendants",
+  "education_level" = "education",
+  "employment_status" = "employment",
+  "has_it_been_confirmed_that_you_are_not_pregnant" = "not_pregnant_confirmed",
+  "number_of_sick_leaves_in_the_past_year" = "sick_leaves_past_year",
+  "how_many_of_them_were_related_to_ashtma" = "asthma_sick_leaves",
+  "net_monthly_income" = "income_annually",
+  "number_of_dependent_children_in_care" = "dependent_children",
+  "number_of_dependent_persons_in_care" = "dependent_persons",
+  "number_of_descendents" = "descendants_n",
+  
+  "age_at_diagnosis" = "age_diagnosis",
+  "control_gina" = "gina_control",
+  "main_diagnosis" = "diagnosis",
+  "severity_gina" = "gina_severity",
+  
+  "feno_ppb_evernoa_base_1st_measurement" = "feno_1",
+  "feno_ppb_evernoa_base_2on_measurement" = "feno_2",
+  "realiced" = "feno_done",
+  "reason" = "feno_reason",
+  
+  "miniaql" = "miniaqlq",
+  
+  "years" = "smoking_years",
+  "paciente_fumador" = "smoker",
+  "sunum" = "packs_day",
+  "year_in_which_started_smoking" = "smoking_start_year",
+  "year_in_which_stopped_smoking" = "smoking_stop_year"
+)
+
+rename_dict_value <- c(
+  # Comorbilidades: special names that may lose the meaning)
+  "crswnp" = "crs_w_np",
+  "crssnp" = "crs_s_np",
+  
+  "sleep apnea" = "sleeep apnea",
+  "hypothyroidism" = "hipothyroidysm",
+  
+  # Diagnóstico
+  "asthma and copd overlap" = "asthma and copd overlkad (aco)",
+  
+  # exacerbations
+  "leve" = "mild",
+  "seve" = "severe"
+)
+
+macro_data <- lapply(macro_data, function(df) {
+  df |> 
+    mutate(
+      # standardize question
+      question = str_to_lower(question), 
+      question = str_squish(question), 
+      question = str_remove_all(question, "his/her|he/she"), 
+      question = str_remove_all(question, "[:punct:]"), 
+      question = str_replace_all(question, "\\s+", "_"),
+      question = str_replace_all(question, sapply(rename_dict_question, coll)),
+      # standardize value
+      value = str_to_lower(value),
+      value = str_squish(value),
+      value = str_replace_all(value, sapply(rename_dict_value, coll))
+    )
+})
+
+# extract exacerbations (could be useful for other analysis)
+exacerbations <- macro_data[["exacerbations"]]
+
+macro_data <- lapply(macro_data, function(df) {
+  df |> 
+    mutate(
+      #
+      value = case_when(
+        is.na(value) & status == "Not Applicable" ~ "not applicable",
+        TRUE ~ value
+      )
+    ) |> 
+    select(id, question, value) |>
+    pivot_wider(
+      id_cols = id,
+      names_from = question,
+      values_from = value
+    )
+})
+
+```
+
+```{r other transformations}
+# remove useless datasets
+macro_data[["allergic_sensitization"]] <- NULL
+
+# some transformations
+# COMORBIDIRIES
+names <- macro_data[["comorbidities"]] |> 
+    select(starts_with("type")) |> 
+    distinct() |> 
+    as_vector() |> 
+  str_replace_all(" ", "_")
+
+lookup <- paste0("yn_", seq_along(names))
+names(lookup) <- names
+
+macro_data[["comorbidities"]] <- macro_data[["comorbidities"]] |> 
+  rename(all_of(lookup)) |> 
+  select(!starts_with("type"))
+
+# DEMOGRAPHICS
+macro_data[["demographics"]] <- macro_data[["demographics"]] |> 
+  mutate(
+    across(c(height, weight), as.numeric),
+    bmi = weight / (height / 100)^2
+  ) |>
+  relocate(bmi, .after = weight) |> 
+  # solve data entry errors
+  mutate(
+    descendants_n = case_when(
+      # when has_descendants is "No", set it to "00"
+      has_descendants == "no" ~ "00",
+      TRUE ~ descendants_n
+    ),
+    dependent_children = case_when(
+      # when has_descendants is "No", set it to "00"
+      has_descendants == "no" ~ "00",
+      TRUE ~ dependent_children
+    ),
+    income_annually = case_when(
+      # when income_annually is NA, set it to "prefer not to answer"
+      is.na(income_annually) ~ "prefer not to answer",
+      TRUE ~ income_annually
+    ),
+    asthma_sick_leaves = case_when(
+      # when asthma_sick_leaves is NA, set it to "00"
+      sick_leaves_past_year == "00" ~ "000",
+      TRUE ~ asthma_sick_leaves
+    )
+  )
+
+# EXACERBATIONS
+macro_data[["exacerbations"]] <- macro_data[["exacerbations"]] |> 
+  select(
+    id,
+    exac_last_year = exacerbations_in_the_last_period,
+    exac_last_year_n = total_number_of_exacerbations_in_the_period
+  )
+
+# SMOKING HABITS
+smoking_extra <- tribble(
+  ~id,       ~packs_day,
+  "HCB014",  0.5,
+  "HCB026",  0.5,
+  "HCB028",  0.286,
+  "HCB034",  0.5,
+  "HCB039",  0.5,
+  "HCB048",  0.143,
+  "HCB051",  0.5,
+  "HCB052",  0.071,
+  "HCB053",  0.25,
+  "HCB055",  0.05,
+  "HCB056",  0.002,
+  "HCB060",  1.5
+)
+
+macro_data[["smoking_habits"]] <- macro_data[["smoking_habits"]] |> 
+  mutate(
+    # hay dos years !!
+    smoking_years = map_chr(smoking_years, ~ .x[2]),
+    across(everything(), unlist),
+    
+    across(c(smoking_start_year, smoking_stop_year, packs_day), as.numeric)
+  ) |> 
+  left_join(smoking_extra, by = "id", suffix = c("", ".new")) |> 
+  mutate(
+    packs_day = coalesce(packs_day.new, packs_day)
+  ) |> 
+  select(-packs_day.new) |> 
+  mutate(
+    # calculate smoking duration and pack years
+    smoking_duration = abs(smoking_stop_year - smoking_start_year),
+    pack_year = packs_day * smoking_duration,
+    pack_year = ifelse(smoker == "non-smoker", 0, pack_year)
+  ) |> 
+  select(id, smoker, smoking_duration, pack_year)
+
+
+# FENO
+macro_data[["feno"]] <- macro_data[["feno"]] |> 
+  mutate(
+    across(c(feno_1,feno_2), as.numeric),
+    feno_mean = (feno_1 + feno_2) / 2,
+    # if feno mean is NA replace with feno_1
+    feno_mean = ifelse(is.na(feno_mean), feno_1, feno_mean),
+  )
+```
+
+```{r column selection}
+# Join all macro_data into a master dataset
+# Collect relevant colnames
+relevant_cols <- c(
+  # Identificador
+  "id",
+  
+  # Demográficos
+  "age", "sex", "bmi",
+  "country_birth", "marital_status", "descendants_n", 
+  "dependent_children", "dependent_persons", "education", 
+  "social_class", "employment", "income_annually",
+  
+  # Historial Clínico y Diagnóstico
+  "sick_leaves_past_year", "asthma_sick_leaves", "diagnosis", 
+  "age_diagnosis", "gina_severity", "gina_control", 
+  # data not complete yet
+  #"gina_step",
+  
+  # Comorbilidades Clave
+  "allergic_rhinitis", "crs_w_np", "crs_s_np", "atopic_dermatitis", 
+  "eosinophilic_esophagitis",
+  
+  # Tabaquismo
+  "smoker", "smoking_duration", "pack_year",
+  
+  # Biomarcadores y Cuestionarios
+  "feno_mean", "act", "miniaqlq", "prick_test_last_3y",
+  
+  # Asignación de Grupo (para validación)
+  "treatment" 
+)
+
+master <- reduce(macro_data, ~ full_join(.x, .y, by = "id")) |> 
+  select(any_of(relevant_cols)) |> 
+  arrange(id)
+
+# convert variables
+numeric_vars <- c(
+  "age", "bmi", "descendants_n", 
+  "dependent_children", "dependent_persons", 
+  "sick_leaves_past_year", "asthma_sick_leaves", 
+  "age_diagnosis", "feno_1", "feno_2", "feno_mean", 
+  "act", "miniaqlq", "smoking_duration", "pack_year"
+)
+```
+
+### Questionnaires
+
+```{r load}
+# read the questionnaires files
+data_path <- "../00_data_raw/v1.0_2025-08-20/manual_entry/questionnaires"
+# list files in folder
+files <- list.files(data_path, full.names = TRUE)
+
+# read all csv files in folder
+questionnaires <- lapply(files, fread, na.strings = c("", "NA"))
+questionnaires <- lapply(files, function(file) {
+  df <- fread(file, na.strings = c("", "NA"))
+  df <- data.table::transpose(df, make.names = "question")
+  df |> 
+    select(!Observaciones) |> 
+    mutate(id = sprintf("HCB%03d", 1:n())) |> 
+    relocate(id)
+})
+
+# extract and change the names
+names(questionnaires) <- gsub(".*BREATHE_questionnaires_download\\((.*)\\)\\.csv", "\\1", files) |> str_to_lower()
+
+
+#pivot longer
+questionnaires <- lapply(questionnaires, function(df) {
+  df |> 
+    pivot_longer(
+      cols = starts_with("Q"), 
+      names_to = "question", 
+      values_to = "value"
+    ) |> 
+    mutate(value = as.integer(value))
+})
+
+# carat entry correction
+questionnaires[["carat"]] <- questionnaires[["carat"]] |> 
+  mutate(value = ifelse(value == 4, 3, value))
+
+# Apply a function to get scores for each dataframe in the list
+scores_questionnaires <- lapply(names(questionnaires), function(name){
+  df <- questionnaires[[name]]
+  df |> 
+    group_by(id) |> 
+    summarise(score = if (name %in% c("acq", "miniaqlq")) mean(value, na.rm = TRUE) else sum(value),
+              .groups = "drop")
+})
+names(scores_questionnaires) <- names(questionnaires)
+
+scores_questionnaires <- scores_questionnaires |>
+  # renombrar score -> acq, airq, carat...
+  imap(~ rename(.x, !!.y := score)) |> 
+  reduce(full_join, by = "id")
+```
+
+### Visual Analog Scale (VAS)
+```{r}
+file <- "../00_data_raw/v1.0_2025-08-20/manual_entry/vas/BREATHE_questionnaires_download(EVA).csv"
+vas_names <- c("id", "los_vas", "rhinitis_vas")
+vas <- file |> 
+  fread(na.strings = c("", "NA")) |> 
+  data.table::transpose(make.names = "question") |> 
+  select(!Observaciones) |> 
+  mutate(id = sprintf("HCB%03d", 1:n())) |> 
+  relocate(id) |> 
+  as_tibble()
+colnames(vas) <- vas_names
+```
+
+
+### Blood Analysis
+
+```{r automatic}
+# read files
+files <- list.files("../00_data_raw/v1.0_2025-08-20/automatic_extraction/blood_analysis/hematology", full.names = TRUE, pattern = "\\.csv$", recursive = T)
+
+# names: capture what is after the last "/" and remove .csv
+names <- sub(".*\\/", "", files) %>%
+  sub("\\.csv$", "", .)
+
+params_haemogram <- c("Leucòcits")
+params_leukocytes <- c("Eosinòfils", "Limfòcits")
+
+# flipped
+rename_dict <- c(
+  "Leucòcits" = "leukocytes",
+  "Eosinòfils" = "eosinophils",
+  "Neutròfils" = "neutrophils",
+  "Limfòcits" = "lymphocytes",
+  "Monòcits" = "monocytes",
+  "Plaquetes" = "platelets",
+  "Hemoglobina" = "hemoglobin",
+  "Hematòcrit" = "hematocrit",
+  "Volum corpuscular mitjà" = "mean_corpuscular_volume",
+  "Concentració d'hemoglobina corpuscular mitjà" = "mean_corpuscular_hemoglobin_concentration",
+  "Amplitud de distribució de glòbuls vermells" = "red_blood_cell_distribution_width"
+)
+
+hematology <- lapply(files, function(file) {
+  read_csv(file, show_col_types = FALSE) |> 
+    mutate(
+      parameter = str_squish(parameter),
+      value = str_replace_all(value, "/[AB]", ""),
+      value = str_replace_all(value, "[<>]", ""),
+      value = as.numeric(value)
+    ) |> 
+    filter(parameter %in% c(params_haemogram, params_leukocytes)) |> 
+    mutate(parameter = str_replace_all(parameter, rename_dict)) |> 
+    pivot_wider(
+      id_cols = id,
+      names_from = c(parameter, unit),
+      values_from = value
+    ) |>
+    rename_with(~ str_replace_all(.x, " ", "_")) |> 
+    rename_with(~ str_replace_all(.x, "%", "pct")) |> 
+    rename_with(~ str_replace_all(.x, "10\\^9/L", "n"))
+}) |> setNames(names)
+
+
+ige_total <- read_csv("../00_data_raw/v1.0_2025-08-20/automatic_extraction/blood_analysis/immunology/ige_total.csv", show_col_types = FALSE) |> 
+  mutate(
+    value = str_replace_all(value, "/[AB]", ""),
+    value = str_replace_all(value, "[<>]", ""),
+    value = as.numeric(value)
+  ) |> 
+  rename(ige_total = value)
+
+auto_blood_data <- c(hematology, list(ige_total)) |> 
+  reduce(full_join, by = "id")
+
+ige_specific <- read_csv("../00_data_raw/v1.0_2025-08-20/automatic_extraction/blood_analysis/immunology/ige_specific.csv", show_col_types = FALSE) |> 
+  mutate(
+    value = str_replace_all(value, "/[AB]", ""),
+    value = str_replace_all(value, "[<>]", ""),
+    value = as.numeric(value)
+  ) |> 
+  group_by(id) |> 
+  summarise(
+    is_sensitized = any(value >= 0.35),
+    n_sensitizations = sum(value >= 0.35),
+    main_sensitization = if (any(value >= 0.35)) subgroup[which.max(value)] else NA_character_
+  )
+```
+
+```{r manual}
+files <- list.files("../00_data_raw/v1.0_2025-08-20/manual_entry/blood_analysis", full.names = TRUE, pattern = "\\.csv$", recursive = T)
+
+# capture what is inside parenthesis
+names <- str_extract(files, "(?<=\\().*?(?=\\))")
+
+manual_blood_data <- lapply(files, function(file) {
+  read_csv(file, show_col_types = FALSE)
+}) |> setNames(names)
+
+manual_blood_data <- reduce(manual_blood_data, full_join, by = "id")
+```
+
+```{r join}
+# join automatic and manual blood data
+identical(colnames(auto_blood_data), colnames(manual_blood_data))
+
+blood_data <- bind_rows(
+  auto_blood_data |> 
+    mutate(source = "automatic"),
+  manual_blood_data |> 
+    mutate(source = "manual")
+)
+```
+
+
+
+### Spirometry
+```{r automatic_entry}
+# read the spirometry file
+spirometry_auto <- read_csv("../00_data_raw/v1.0_2025-08-20/automatic_extraction/spirometry/spirometry.csv")
+
+spiro_complete <- spirometry_auto |> 
+  filter(phase != "Not applicable") |> 
+  pivot_wider(
+    names_from = c(phase, value_type), 
+    values_from = value)
+
+spiro_na <- spirometry_auto |> 
+  filter(phase == "Not applicable") |> 
+  select(!phase) |> 
+  pivot_wider(
+    names_from = value_type,
+    values_from = value
+  )
+
+spirometry_auto <- spiro_complete |> 
+  left_join(spiro_na, by = c("id", "parameter")) |> 
+  relocate(theorical, lin, .after=Pre_raw)
+```
+
+
+```{r manual_entry}
+file <- "../00_data_raw/v1.0_2025-08-20/manual_entry/spirometry/spirometry_manual.csv"
+spirometry_manual <- read_csv(file) |> 
+  # filter rows with NA in all columns
+  filter(!if_all(everything(), is.na)) |> 
+  mutate(across(everything(), as.character))
+```
+
+
+```{r harmonize}
+param_dict <- c(
+  "fef50%\\(l/s\\)"       = "fef50(l/s)",
+  "fef25%-75%\\(l/s\\)"   = "fef25-75(l/s)"
+)
+
+spirometry_all <- bind_rows(
+  spirometry_auto |> 
+    mutate(source = "automatic"), 
+  spirometry_manual |> 
+    select(!obs) |> 
+    mutate(source = "manual")
+  ) |> 
+  # lowercase column names
+  rename_with(tolower) |>
+  # replace "-" with "_" in column names
+  rename_with(~ str_replace_all(.x, "-", "_")) |>
+  # other transformations
+  rename_with(~ str_replace_all(.x, "bd", "")) |> 
+  rename_with(~ str_replace_all(.x, "%", "pct_")) |> 
+  rename_with(~ str_replace_all(.x, "teòric", "pred")) |> 
+  rename_with(~ str_replace_all(.x, "_raw", "")) |> 
+  mutate(parameter = tolower(parameter),
+         parameter = str_replace_all(parameter, "\\s*", ""),
+         parameter = str_replace_all(parameter, "\\[", "("),
+         parameter = str_replace_all(parameter, "\\]", ")")) |> 
+  mutate(parameter = str_replace_all(parameter, sapply(param_dict, coll))) |> 
+  # assume that fef25-75(l/s) is the same as fef25%-75%(l/s)
+  mutate(
+    across(pre:pct_change, ~ str_replace_all(., ",", ".")),
+    across(pre:pct_change, ~ as.numeric(.))
+    )
+
+```
+
+
+### Treatment
+
+```{r read}
+# Process the to_read data
+data_path <- "../00_data_raw/v1.0_2025-08-20/manual_entry/treatment/to_read"
+to_read_files <- list.files(data_path, full.names = TRUE, pattern = "\\.csv$")
+
+to_read_data <- lapply(to_read_files, function(file) {
+  read_csv(file, show_col_types = FALSE) |> 
+    filter(!if_all(everything(), is.na)) |> 
+    mutate(
+      source = basename(file) |> str_replace_all("-", "_") |> str_remove("\\.csv$")
+      )
+})
+names(to_read_data) <- basename(to_read_files) |> str_replace_all("-", "_") |> str_remove("\\.csv$")
+
+# Process the to_parse data
+data_path <- "../00_data_raw/v1.0_2025-08-20/manual_entry/treatment/to_parse/processed"
+processed_files <- list.files(data_path, full.names = TRUE, pattern = "\\.csv$")
+
+processed_data <- lapply(processed_files, function(file) {
+  read_csv(file, show_col_types = FALSE) |> 
+    mutate(
+      source = basename(file) |> str_replace_all("-", "_") |> str_remove("\\.csv$")
+      )
+})
+names(processed_data) <- basename(processed_files)|> str_replace_all("-", "_") |> str_remove("\\.csv$")
+```
+
+```{r corrections}
+# rows to correct
+#id,medication,posology
+#HCB051,Dupilumab,NA
+#HCB051,Spiriva,2-0-0
+#HCB051,Formodual,2-0-2
+#HCB049,Tezepelumab,NA 
+#HCB049,relvar,184/22 1inh al dia
+#HCB049,montelukast,NA 
+#HCB049,spiriva,2inh al dia
+
+ids_with_corrections <- c("HCB051","HCB049")
+
+# Diccionario de reemplazo
+dict <- tribble(
+  ~medication_raw,   ~medication, ~posology,
+  "Dupilumab",       "DUPILUMAB", "300 MG / C/2 SEMANAS C",
+  "Spiriva",         "Tiotropio (SPIRIVA RESPIMAT 2,5MCG)", "5 MCG / DE-0-0 / PULMONAR (SEGONS EVOLUCIÓ)",
+  "Formodual",       "BECLOMETASONA + FORMOTEROL (FORMODUAL NEXTHALER 100/6)", "2 INH / C/12H / PULMONAR (SEGONS EVOLUCIÓ)",
+  "Tezepelumab",     "TEZEPELUMAB", "210 MG / C/MES SC",
+  "relvar",          "FLUTICASONA + VILANTEROL (RELVAR ELLIPTA 184/22)", "1 INH / C/24H / PULMONAR (SEGONS EVOLUCIÓ)",
+  "montelukast",     "MONTELUKAST (SINGULAIR 10 MG)", "10 MG / C/24H / ORAL (SEGONS EVOLUCIÓ)",
+  "spiriva",         "Tiotropio (SPIRIVA RESPIMAT 2,5MCG)", "5 MCG / C/24H / PULMONAR (SEGONS EVOLUCIÓ)"
+)
+
+processed_data[["medication_manual"]] <- processed_data[["medication_manual"]] |>
+  # make the replacements
+  filter(id %in% ids_with_corrections) |>
+  left_join(dict, by = c("medication" = "medication_raw")) |>
+  select(id, medication = medication.y, posology = posology.y, source) |> 
+  bind_rows(
+    processed_data[["medication_manual"]] |> filter(!(id %in% ids_with_corrections))
+  )
+```
+
+```{r process}
+medication <- bind_rows(c(to_read_data, processed_data))
+
+# remove duplicates
+medication <- medication |> 
+  distinct(id, medication, posology) |> 
+  separate_wider_delim(
+    medication, " (", names = c("medication", "med_details"), too_few = "align_start", too_many = "merge"
+    ) |> 
+  mutate(med_details = str_replace_all(med_details, "\\)$", ""))
+    
+```
+
+```{r}
+# some replacements
+# all of them are interpreted as regex
+replacements <- c(
+  # Literal replacements
+  
+  "\\(R\\)"     = "",           # Remove (R) trademark symbol
+  " MG"         = "MG",
+  "MICROFRAMOS" = "MICROGRAMOS",
+  "MICROGRAMOS" = "MCG",
+  " MCG"        = "MCG",
+  
+  "\\bSOLUCION\\b"    = "SOLUC",
+  "\\bSOLUC\\b"       = "SOL",
+  "SOL "              = "SOLUCION ",
+  "SOL$"              = "SOLUCION",
+  "\\bINHALADHOR\\b"  = "INHALADOR",
+  "\\bINHAHADOR\\b"   = "INHALADOR",
+  "\\b1 INHALADOR\\b" = "1 INHAL",
+  "\\b1 INHAL\\b"     = "1 INHALADOR",
+  "\\bINHALACION\\b"  = "INHALAC",
+  "\\bINHALAC\\b"     = "INHAL",
+  "\\bINHAL\\b"       = "INH",
+  
+  # replacements for some abbreviations
+  "/INH" = " POR INH",
+  "/DOSIS" = " POR DOSIS",
+  "/PULSACION" = "/PULS",
+  "/PULS" = " POR PULSACION",
+  "/APLICACION" = " POR APLICACION",
+  "/PULVERIZACIO" = " POR PULVERIZACIO",
+
+  # Regex replacements for numbers + units
+  "(\\d+) %"  = "\\1%",
+  "(\\d+) G"  = "\\1G",
+  "(\\d+) ML" = "\\1ML",
+  "(\\d+) UI" = "\\1UI",
+  
+  # Add more replacements as needed
+  "\\(ADRENALINA\\)" = "ADRENALINA",
+  "REVINTY ELLIPTA 184/" = "REVINTY ELLIPTA 184MCG/"
+  )
+
+medication <- medication |> 
+  mutate(
+    across(everything(), ~ stri_trans_general(., "Latin-ASCII")),
+    med_details = str_to_upper(med_details),
+    med_details = str_replace_all(med_details, "\\s*/\\s*", "/"),  # normalize slashes first
+    med_details = str_replace_all(med_details, "\\s+,\\s*", ", "),  # normalize commas
+    med_details = str_replace_all(med_details, replacements), # o usar coll(replacements) quitando las \\b y regrex
+    medication = str_replace_all(medication, "\\bglicopirroni\\b", "glicopirronio"),
+    )
+
+rm(replacements)
+```
+
+```{r}
+medication <- medication |> 
+  mutate(
+    # extract the market name and presentation
+    med_name = str_extract(med_details, "^[A-Z\\s\\-]+"), # parte fija del nombre
+    med_name = str_squish(med_name),
+    
+    med_presentation = str_remove(med_details, "^[A-Z\\s\\-]+"), # resto
+    med_presentation = str_squish(med_presentation),
+    
+    # clean med_presentation
+    med_presentation = str_remove(med_presentation, "^[,\\(]"), # remove leading commas and parentheses
+    med_presentation = str_squish(med_presentation),
+    ) |> 
+  select(id, medication, med_name, med_presentation, posology)
+
+
+medication <- medication |> 
+  separate_wider_delim(
+    med_presentation, " ", names = c("dose", "presentation"), too_few = "align_start", too_many = "merge"
+    ) |> 
+  mutate(
+    # cleaning
+    dose = str_remove(dose, ",$"), # remove trailing commas
+    dose = str_replace_all(dose, ",", "."),
+    dose = na_if(dose, ""),
+    # maneja puntos de miles "25<.>000UI/2,5ML"
+    dose = str_replace_all(dose, "(?<=\\d)\\.(?=\\d{3}(?:[A-Z]))", ""),
+    # data entry corrections
+    # 12	1.000GAMMAS (=1MG), 5 AMPOLLAS DE 2ML			
+    # 40	COMPRIMIDOS			
+    # 80	COMPRIMIDOS CON CUBIERTA PELICULAR, 60 COMPRIMIDOS
+    med_name = ifelse(dose == 12, paste0(med_name, dose), med_name),
+    presentation = ifelse(dose %in% c("40", "80"), paste(dose, presentation), presentation),
+    dose = ifelse(dose %in% c("12","40", "80"), NA_character_, dose),
+    )
+
+
+medication <- medication |>
+  separate_wider_delim(
+    posology, names = c("dose_total", "freq", "route"), delim = " / ", 
+    too_few = "align_start", too_many = "merge"
+    ) |> 
+  separate_wider_delim(
+    route, names = c("route", "route_details"), delim = "(", 
+    too_few = "align_start", too_many = "merge"
+    ) |> 
+  select(!route_details)
+
+
+medication <- medication |>
+  mutate(
+    # fix "SC" with "" in freq to put it later in route
+    freq = str_replace(freq, "SEMANA\\s*SC", "SEMANAS"),
+    freq = str_remove(freq, "SC$"),
+    freq = str_squish(freq),
+    # fix route
+    route = case_when(
+      str_detect(medication, "umab") ~ "SUBCUTANEA",
+      TRUE ~ route
+    ),
+    # unificar
+    across(dose:route, str_squish),
+  )
+```
+
+```{r}
+medication <- medication |> 
+  mutate(
+    freq = case_when(
+      str_detect(freq,"C/24H|24 HORES|^1 DIES$|365 DIES|105 DIES") ~ "C/24H",
+      # algunas pautas
+      str_detect(freq,"DE-0-0|0-0-CE|0-CO-0") ~ "C/24H",
+      # horas fijas
+      str_detect(freq,"^\\d{1,2}:\\d{2}$") ~ "C/24H",
+      str_detect(freq, "C/12H|12 HORES|DE-0-CE|DE-0-0-N") ~ "C/12H",
+      str_detect(freq, "C/8H|8 HORES|DE-CO-CE") ~ "C/8H",
+      str_detect(freq, "C/72H|72 HORES") ~ "C/72H",
+      str_detect(freq, "C/4 SEMANAS|C/28 DIAS") ~  "C/4 SEMANAS",
+      # otras pautas hospitalarias
+      str_detect(freq, "0-CO-0-N|0-CO-CE") ~ "otra pauta",
+      str_detect(freq, "SEGONS PAUTA") ~ "otra pauta",
+      str_detect(freq, "1 MESOS") ~ NA_character_,
+      TRUE ~ freq
+    )
+  )
+```
+
+
+```{r drug_dict}
+# load drug dictionary
+drug_dict <- read_csv("../05_utilities/drug_dict.csv")
+
+drug_dict <- drug_dict |> 
+  # Normalizar nombres de columnas y filtrar solo las que importan
+  rename_with(tolower) |>
+  rename_with(~ str_replace_all(.x, " ", "_")) |>
+  select(category, active_ingredient) |>
+  # Separar categorías y activos en listas
+  mutate(
+    category = str_split(category, "\\+"),
+    active_ingredient = str_split(active_ingredient, "/")
+  ) |>
+  # Expandir filas paralelamente
+  unnest(c(category, active_ingredient)) |>
+  mutate(
+    category = str_trim(category),
+    active_ingredient = str_trim(active_ingredient),
+    active_ingredient = str_to_lower(active_ingredient),
+  ) |> 
+  distinct()
+
+drug_dict <- drug_dict |> 
+  bind_rows(
+    tribble(
+      ~category, ~active_ingredient,
+      "SABA", "salbutamol",
+      "SABA", "terbutaline",
+      "SAMA", "ipratropium",
+      "LAMA", "tiotropium",
+      "LAMA", "umeclidinium",
+      "ICS", "budesonide",
+      "ICS", "ciclesonide",
+      "ICS", "fluticasone propionate",
+      "ICS", "fluticasone propionate",
+      "BIOLOGIC","omalizumab",        # anti (IgE)
+      "BIOLOGIC","mepolizumab",       # anti (IL-5)
+      "BIOLOGIC","reslizumab",        # anti (IL-5)
+      "BIOLOGIC","benralizumab",      # anti (IL-5Rα)
+      "BIOLOGIC","dupilumab",         # anti (IL-4Rα)
+      "BIOLOGIC","tezepelumab"        # anti (TSLP)
+      ),
+    tribble(
+      ~active_ingredient,      ~category,
+      "montelukast",           "LTRA",              # leukotriene receptor antagonist
+      "azelastine",            "Antihistamine (H1)",
+      "ebastine",              "Antihistamine (H1)",
+      "bilastine",             "Antihistamine (H1)",
+      "glycopyrronium",        "LAMA",
+      "omeprazole",            "PPI",               # proton pump inhibitor
+      "diazepam",              "Benzodiazepine",
+      "lorazepam",             "Benzodiazepine",
+      "lormetazepam",          "Benzodiazepine",
+      "levothyroxine",         "Thyroid hormone",
+      "paracetamol",           "Analgesic/antipyretic",
+      "calcifediol",           "Vitamin D analogue",
+      "cholecalciferol",       "Vitamin D3",
+      "epinephrine",           "Adrenergic agonist",
+      "quetiapine",            "Antipsychotic",
+      "tramadol",              "Opioid analgesic",
+      "citalopram",            "SSRI",          # selective serotonin reuptake inhibitor
+      "sertraline",            "SSRI",          # selective serotonin reuptake inhibitor
+      "paroxetine",            "SSRI",          # selective serotonin reuptake inhibitor
+      "amitriptyline",         "TCA",           # tricyclic antidepressant
+      "venlafaxine",           "SNRI",
+      "duloxetine",            "SNRI",
+      "empagliflozin",         "SGLT2 inhibitor",
+      "metformin",             "Biguanide (antidiabetic)",
+      "naproxen",              "NSAID",
+      "diclofenac",            "NSAID",
+      "acetylsalicylic acid",  "NSAID (antiplatelet)",
+      "indacaterol",           "LABA",
+      "cetirizine",            "Antihistamine (H1)",
+      "loratadine",            "Antihistamine (H1)",
+      "desloratadine",         "Antihistamine (H1)",
+      "ketotifen",             "Antihistamine (H1)",
+      "olopatadine",           "Antihistamine (H1)",
+      "cyanocobalamin",        "Vitamin B12",
+      "calcium carbonate",     "Calcium supplement",
+      "dienogest",             "Progestin",
+      "ethinylestradiol",      "Estrogen (synthetic)",
+      "etonogestrel",          "Progestin",
+      "ondansetron",           "5-HT3 antagonist (antiemetic)",
+      "rizatriptan",           "Triptan",
+      "sumatriptan",           "Triptan",
+      "prednisone",            "Corticosteroid (oral)",
+      "acetylcysteine",        "Mucolytic",
+      "amoxicillin",           "Antibiotic",
+      "cefuroxime",            "Antibiotic",
+      "clobetasol",            "Corticosteroid (topical)",
+      "hydrocortisone",        "Corticosteroid (oral)",
+      )
+  ) |> 
+  distinct() |> 
+  arrange(category, active_ingredient)
+
+```
+
+
+```{r translation}
+# Vector original
+spanish <- c(
+  "fluticasona", "formoterol", "tiotropi", "tiotropio", "beclometasona",
+  "salbutamol", "vilanterol", "mometasona", "montelukast",
+  "azelastina", "ebastina", "bilastina", "dupilumab",
+  "tezepelumab", "budesonida", "glicopirronio", "ipratropio",
+  "omeprazol", "diazepam", "levotiroxina", "paracetamol",
+  "benralizumab", "calcifediol", "epinefrina", "loracepam", "quetiapina",
+  "tramadol", "citalopram", "colecalciferol", "empagliflozina", "ketotifeno",
+  "naproxeno", "sertralina", "amitriptilina", "carbonato de calcio",
+  "cetirizina", "cianocobalamina", "ciclesonida", "dienogest", "indacaterol",
+  "loratadina", "lormetazepam", "metformina", "metilfenidato", "olopatadina",
+  "omalizumab", "ondansetron", "paroxetina", "prednisona", "rizatriptan",
+  "sumatriptan"
+)
+
+# Vector de traducción al inglés
+english <- c(
+  "fluticasone", "formoterol", "tiotropium", "tiotropium", "beclomethasone",
+  "salbutamol", "vilanterol", "mometasone", "montelukast",
+  "azelastine", "ebastine", "bilastine", "dupilumab",
+  "tezepelumab", "budesonide", "glycopyrronium", "ipratropium",
+  "omeprazole", "diazepam", "levothyroxine", "paracetamol",
+  "benralizumab", "calcifediol", "epinephrine", "lorazepam", "quetiapine",
+  "tramadol", "citalopram", "cholecalciferol", "empagliflozin", "ketotifen",
+  "naproxen", "sertraline", "amitriptyline", "calcium carbonate",
+  "cetirizine", "cyanocobalamin", "ciclesonide", "dienogest", "indacaterol",
+  "loratadine", "lormetazepam", "metformin", "methylphenidate", "olopatadine",
+  "omalizumab", "ondansetron", "paroxetine", "prednisone", "rizatriptan",
+  "sumatriptan"
+)
+
+# Crear dataframe de mapeo
+translation_dict <- tibble(spanish, english)
+
+```
+
+
+```{r}
+medication <- medication |> 
+  mutate(
+    active_ingredient = str_split(medication, "\\+"),
+  ) |> 
+  unnest(active_ingredient) |> 
+  mutate(
+    active_ingredient = str_squish(active_ingredient),
+    active_ingredient = str_to_lower(active_ingredient),
+  ) |> 
+  left_join(translation_dict, by = join_by(active_ingredient == spanish)) |> 
+  left_join(drug_dict, by = join_by(english == active_ingredient)) |> 
+  select(!english) |> 
+  select(id, medication, active_ingredient, active_ingredient_cat = category, med_name:last_col())
+
+# Creamos la categoría combinada por id + medication
+combined_cat <- medication |>
+  group_by(id, medication) |>            # agrupamos por paciente y medicamento
+  summarise(active_ingredient_cat_combined = paste(unique(active_ingredient_cat), collapse = "+"), .groups = "drop")
+
+# Lo unimos de nuevo al dataframe original si quieres mantener las filas separadas
+medication <- medication |>
+  left_join(combined_cat, by = c("id", "medication")) |> 
+  relocate(medication_cat = active_ingredient_cat_combined, .after = medication)
+
+treatment_summary <- medication |>
+  group_by(id) |>
+  summarise(
+    is_on_ics_laba = "ICS+LABA" %in% medication_cat,
+    is_on_lama = "LAMA" %in% medication_cat,
+    is_on_triple_therapy = "ICS+LABA+LAMA" %in% medication_cat,
+    is_on_ics = "ICS" %in% medication_cat,
+    is_on_antihistamine = "Antihistamine (H1)" %in% medication_cat,
+    is_on_ics_antihistamine = "ICS+Antihistamine (H1)" %in% medication_cat,
+    is_on_biologic = "BIOLOGIC" %in% medication_cat,
+    is_on_ltra = "LTRA" %in% medication_cat
+  )
+
+```
+
+
+# Notes
+```{r eval=FALSE}
+# one to one
+one_to_one <- c("ashtma_control_test", "demographics", "diagnosis", "feno", "gina", "inclusion_assigment_code", "miniaqlq")
+# one to many
+one_to_many <- "exacerbations"
+# special ones
+special <- c("comorbidities", "smoking_habits")
+
+# 
+universe <- sprintf("HCB%03d", 1:60)
+```
+
+```{r exacerbations}
+# exacerbations during the last year
+rename_dict <- c(
+  "heexachatto" = "exac_change_trt",
+  "date" = "exac_date",
+  "increase_dose_bronchodilators" = "exac_broncho_up",
+  "increase_dose_inhaled_corticosteroids" = "exac_ics_up",
+  "intensity" = "exac_intensity",
+  "treated_with_antibiotics" = "exac_abx"
+  
+  #"exacerbations_in_the_last_period" = "exac_last_year",
+  #"total_number_of_exacerbations_in_the_period" = "exac_last_year_n",
+)
+
+exacerbations |>
+  filter(status != "Not Applicable") |>
+  filter(question != "period") |>
+  filter(question != "exacerbations_in_the_last_period") |>
+  filter(question != "total_number_of_exacerbations_in_the_period") |> 
+  select(!status) |> 
+  # extract the exacerbation number
+  mutate(exac_num = str_extract(question, "\\d+"),
+         question = str_remove(question, "_\\d+")) |> 
+  relocate(exac_num, .before = question) |> 
+  pivot_wider(
+    id_cols = c(id, exac_num),
+    names_from = question,
+    values_from = value
+  )
+```
+
+```{r eval=FALSE}
+# exacerbations group by id
+exacerbations |> 
+  group_by(id) |> 
+  summarise(
+    total_exacerbations = n(),
+    .groups = "drop"
+  )
+```
+
+blood_analysis
+```{r eval=FALSE}
+# ige especifico y recombinante no han entrado en el analisis
+tribble(
+  ~id, ~subgroup, ~allergen, ~value,
+  #~id, ~subgroup, ~allergen, ~value, ~unit, ~ref_interval,
+  "HCB032","INHALANTS-ÀCARS","IgE Dermatophag. pteronyssinus (d1)-conc","5.23/A",
+  "HCB032","INHALANTS-ÀCARS","IgE rDer p 23 àcar (d209)-conc.","0.32/A",
+  "HCB032","INHALANTS-ÀCARS","IgE Der p 1 ácaro (d202)-conc.","2.31/A",
+  "HCB032","INHALANTS-FONGS","IgE Alt a 1 Alternaria alter. (m229)-con","0.93/a",
+  "HCB032","INHALANTS-EPITELIS","IgE Fel d 1 Gat(e94)-conc.","6.21/A",
+)
+
+
+
+```
+
+```{r manual_entry eval=FALSE}
+#manual entry
+extra_ige_total <- tribble(
+  ~id, ~value,
+  "HCB031", "9.96",
+  "HCB032", "68.6",
+)
+
+extra_haemogram <- tribble(~id, ~parameter, ~value, ~unit,
+                           "HCB031", "Leucòcits", "6.54", "10^9/L",
+                           "HCB032", "Leucòcits", "5.52", "10^9/L",
+)
+
+extra_leukocytes <- tribble(~id, ~parameter, ~value, ~unit,
+                            "HCB031", "Limfòcits", "22.8", "%",
+                            "HCB031", "Limfòcits", "1.5", "10^9/L",
+                            "HCB031", "Eosinòfils", "2.7", "%",
+                            "HCB031", "Eosinòfils", "0.2", "10^9/L",
+                            
+                            "HCB032", "Limfòcits", "28", "%",
+                            "HCB032", "Limfòcits", "1.5", "10^9/L",
+                            "HCB032", "Eosinòfils", "6.7/A", "%",
+                            "HCB032", "Eosinòfils", "0.4", "10^9/L",
+)
+```
+
+medication
+```{r corrections}
+medication |> 
+  filter(str_detect(medication, coll("fluticasona+azelastina (RINODUO 137 MICROGRAMOS/50...)")))
+
+replace_dict <- c(
+  "fluticasona+azelastina (RINODUO 137 MICROGRAMOS/50...)" = "fluticasona+azelastina (RINODUO 137 MICROGRAMOS/50 MICROGRAMOS/PULSACION SUSPENSION PARA PULVERIZACION NASAL, 120 dosis)",
+  "BILASTINA (IBIS 20 MG COMPRIMIDOS , 20 COMPRIMID...)" = "BILASTINA (IBIS 20 MG COMPRIMIDOS , 20 COMPRIMIDOS)",
+  "EBASTINA (EBASTEL FORTE FLAS 20 MG LIOFILIZADO...)" = "EBASTINA (EBASTEL FORTE FLAS 20 MG LIOFILIZADOS ORALES, 20 LIOFILIZADOS)"
+)
+# correct "fluticasona+azelastina (RINODUO 137 MICROGRAMOS/50...)"
+# correct "BILASTINA (IBIS 20 MG COMPRIMIDOS , 20 COMPRIMID...)"
+# correct "EBASTINA (EBASTEL FORTE FLAS 20 MG LIOFILIZADO...)"
+
+medication <- medication |> 
+  mutate(
+    medication = case_when(
+      id == "HCB020" &  is.na(posology) ~ "fluticasona+azelastina (RINODUO 137 MICROGRAMOS/50 MICROGRAMOS/PULSACION SUSPENSION PARA PULVERIZACION NASAL, 120 dosis)",
+      id == "HCB060" &  is.na(posology) ~ "BILASTINA (IBIS 20 MG COMPRIMIDOS , 20 COMPRIMIDOS)",
+      id == "HCB025" & is.na(posology) ~ "EBASTINA (EBASTEL FORTE FLAS 20 MG LIOFILIZADOS ORALES, 20 LIOFILIZADOS)",
+      TRUE ~ medication
+    ),
+    posology = case_when(
+      id == "HCB060" &  str_detect(medication, "BILASTINA \\(IBIS") ~ "20 MG / C/24H / ORAL(360)",
+      id == "HCB025" & str_detect(medication, "EBASTINA \\(EBASTEL FORTE") ~ "20 MG / C/24H / ORAL(365)",
+      
+      # found by filter(is.na(route_details))
+      id == "HCB022" & str_detect(medication, "ciclesonida") ~ "1 INHALACIÓ / 24 HORES / PULMONAR(SEGONS EVOLUCIÓ)",
+      TRUE ~ posology
+    )
+  )
+
+```

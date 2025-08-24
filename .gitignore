@@ -1,0 +1,18 @@
+# Ignorar datos
+00_data_raw/
+01_data_processed/
+05_utilities/drug_dict.csv
+
+# Ignorar resultados (pueden ser regenerados)
+04_results/
+02_scripts/python_processing
+
+# Ignorar pycache
+02_scripts/python_processing/__pycache__
+
+# Ficheros del sistema operativo y de R
+.Rhistory
+.RData
+.DS_Store
+.Rproj.user
+TFM_BREATHE.Rproj

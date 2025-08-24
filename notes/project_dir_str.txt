@@ -1,0 +1,94 @@
+~/Library/CloudStorage/OneDrive-FRCB-IDIBAPS
+|
+`-- TFM_DATA/
+    `-- v1.0_2025-08-01/
+        |
+        |-- macro_download/
+        |   |-- raw/
+        |   `-- processed/
+        |
+        |-- automatic_extraction/  <-- Datos de tus scripts de parsing de PDFs
+        |   |
+        |   |-- blood_analysis/
+        |   |   |
+        |   |   |-- hematology/
+        |   |   |   |-- hemograma_auto.csv
+        |   |   |   `-- leucocitos_auto.csv
+        |   |   |
+        |   |   |-- immunology/
+        |   |   |   |-- ige_total_auto.csv
+        |   |   |   |-- ige_specific_auto.csv
+        |   |   |   `-- ige_recombinant_auto.csv
+        |   |   |
+        |   |   `-- metadata_auto.csv  <-- El fichero de metadatos
+        |   |
+        |   `-- spirometry/
+        |       `-- spirometry_auto.csv
+        |   
+        `-- manual_entry/          <-- Todos los datos introducidos a mano
+            |-- blood_analysis/      <-- Los datos manuales que solapan con los automáticos
+            |   |-- hemograma_manual.csv
+            |   `-- leucocitos_manual.csv
+            |-- spirometry/
+            |   `-- spirometry_manual.csv
+            |-- treatment/             <-- El resto de datos manuales
+            |   `-- treatment.csv
+            |-- questionnaires/
+            |   `-- questionnaires.csv
+            `-- eva/
+                `-- eva.csv
+
+
+
+~/Documents/Msc-Omics-Data-Analysis/TFM/TFM_BREATHE
+|
+|-- 01_data_processed/  <-- Aquí guardas los ficheros finales y limpios
+|   |-- blood_analysis_harmonized.rds
+|   |-- spirometry_harmonized.rds
+|   `-- master_dataset_v1.0.RData
+|
+|-- 02_scripts/
+|   |-- python_processing/
+|   |-- R_analysis/
+|   `-- main_pipeline.Rmd
+|
+|-- 03_reports/
+|   |-- report_for_tutor.Rmd
+|   `-- final_thesis.Rmd
+|
+|-- 04_results/
+|   |-- figures/
+|   |-- tables/
+|
+|-- notes/
+|   |-- ideas_clustering.md
+|   `-- proxima_reunion_tutora.txt
+|
+`-- README.md
+
+
+/C:/Users/David/Mis_Documentos/
+|
+|-- TFM_BREATHE/               <-- Esta es tu carpeta de proyecto, sincronizada con Git.
+|   |-- 01_data_processed/
+|   `-- 02_scripts/
+|       `-- python_processing/
+|           `-- parse_pdfs.py
+|
+`-- DATOS_SENSIBLES_BREATHE/     <-- Esta carpeta NO está en Git. Vive solo aquí.
+    |-- blood_pdfs/
+    `-- spiro_pdfs/
+
+
+que poner en el git ignore:
+# Ignorar datos
+00_data_raw/
+01_data_processed/
+
+# Ignorar resultados (pueden ser regenerados)
+04_results/
+
+# Ficheros del sistema operativo y de R
+.Rhistory
+.RData
+.DS_Store

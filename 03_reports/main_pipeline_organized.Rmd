@@ -1,0 +1,83 @@
+---
+title: "BREATHE_baseline_visit"
+output: 
+  BiocStyle::html_document:
+    number_sections: false
+    toc: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(gtsummary)
+```
+
+## 1. Definición de Rutas y Parámetros
+
+```{r paths}
+# Rutas relativas desde la ubicación del Rmd (03_reports) a la raíz del proyecto
+raw_data_path <- "../00_data_raw/v1.0_2025-08-20"
+processed_data_path <- "../01_data_processed/v1.0"
+scripts_path <- "../02_scripts/R_processing"
+```
+
+## 2. Ejecución del Procesamiento de Datos
+
+```{r run_processing}
+# Llamamos a los scripts externos que procesan cada fuente de datos.
+# Cada script lee datos de '00_data_raw' y guarda un fichero .rds limpio en '01_data_processed'.
+
+source(file.path(scripts_path, "01_process_macro_data.R"))
+process_macro_data(raw_data_path, processed_data_path)
+
+source(file.path(scripts_path, "02_process_questionnaires.R"))
+process_questionnaires(raw_data_path, processed_data_path)
+
+source(file.path(scripts_path, "03_harmonize_blood_data.R"))
+harmonize_blood_data(raw_data_path, processed_data_path)
+
+source(file.path(scripts_path, "04_harmonize_spirometry_data.R"))
+harmonize_spirometry_data(raw_data_path, processed_data_path)
+
+source(file.path(scripts_path, "05_process_treatment_data.R"))
+process_treatment_data(raw_data_path, processed_data_path, scripts_path)
+```
+
+## 3. Construcción del Dataset Maestro
+
+```{r build_master_dataset}
+# Este script final lee todos los ficheros .rds procesados y los une.
+source(file.path(scripts_path, "06_build_master_dataset.R"))
+master_dataset <- build_master_dataset(processed_data_path)
+
+# Guardamos el dataset maestro final
+#saveRDS(master_dataset, file.path(processed_data_path, "master_dataset.rds"))
+```
+
+
+## 4. Análisis Exploratorio de Datos (EDA)
+
+```{r}
+ggplot(master_dataset, aes(y = eosinophils_n, x = analysis_group, fill = analysis_group)) +
+  geom_boxplot() +
+  labs(title = "Distribución de FENO por Grupo de Análisis",
+       x = "Grupo de Análisis",
+       y = "FENO (ppb)") +
+  theme_minimal()
+```
+
+
+```{r}
+# scatterplot for snot22 and feno_mean
+ggplot(master_dataset, aes(x = snot22, y = feno_mean, color = crs_w_np)) +
+  geom_point() +
+  #geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Relación entre SNOT-22 y FENO",
+       x = "SNOT-22",
+       y = "FENO (ppb)") +
+  theme_minimal()
+
+# compute spearman correlation
+cor(master_dataset$snot22, master_dataset$feno_mean, method = "spearman", use = "complete.obs")
+```
+

@@ -14,6 +14,8 @@ build_master_dataset <- function(processed_path) {
     pattern = "\\.rds$",
     full.names = TRUE
   )
+  # remove master_dataset.rds if exists
+  files_to_load <- files_to_load[!str_detect(files_to_load, "master_dataset.rds")]
   
   list_of_datasets <- files_to_load |>
     map(~ readRDS(.x))
@@ -54,8 +56,8 @@ build_master_dataset <- function(processed_path) {
     "smoker", "pack_year", 
     "airq", "snot22", "tai10",
     "feno_mean", 
-    "eosinophils_n", "ige_total",
-    "pct_pred_fev1", "pct_pred_fvc", "fev1_fvc", 
+    "eosinophils_n", "eosinophils_pct" , "ige_total",
+    "pct_pred_fev1", "pct_pred_fvc", "fev1_fvc", "fev1", "fvc",
     "is_on_biologic",
     "treatment"
   )

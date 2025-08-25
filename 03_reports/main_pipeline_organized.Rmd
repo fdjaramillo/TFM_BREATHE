@@ -16,8 +16,8 @@ library(gtsummary)
 
 ```{r paths}
 # Rutas relativas desde la ubicación del Rmd (03_reports) a la raíz del proyecto
-raw_data_path <- "../00_data_raw/v1.0_2025-08-20"
-processed_data_path <- "../01_data_processed/v1.0"
+raw_data_path <- "../00_data_raw/v2.0_2025_08_25"
+processed_data_path <- "../01_data_processed/v2.0"
 scripts_path <- "../02_scripts/R_processing"
 ```
 
@@ -51,7 +51,7 @@ source(file.path(scripts_path, "06_build_master_dataset.R"))
 master_dataset <- build_master_dataset(processed_data_path)
 
 # Guardamos el dataset maestro final
-#saveRDS(master_dataset, file.path(processed_data_path, "master_dataset.rds"))
+saveRDS(master_dataset, file.path(processed_data_path, "master_dataset.rds"))
 ```
 
 

@@ -16,16 +16,18 @@ library(gtsummary)
 library(corrplot)
 library(factoextra)
 library(gt)
+library(ggpubr)
 ```
 
-## 1. Carga y Preparación de Datos
+
+## Carga y Preparación de Datos
 
 Cargamos el dataset maestro y seleccionamos exclusivamente las variables que has confirmado tener. Todo el análisis se basará en este conjunto de datos.
 
 ```{r load_data}
 # Definimos las rutas
-processed_data_path <- "../01_data_processed/v1.0"
-ouput_path <- "../04_results/v1.0"
+processed_data_path <- "../01_data_processed/v2.0"
+ouput_path <- "../04_results/v2.0"
 
 # Cargamos el dataset maestro
 master_dataset <- readRDS(file.path(processed_data_path, "master_dataset.rds"))
@@ -34,140 +36,8 @@ master_dataset <- readRDS(file.path(processed_data_path, "master_dataset.rds"))
 glimpse(master_dataset)
 ```
 
----
 
-## 2. Visión General y "Tabla 1"
-
-El primer paso es crear la tabla descriptiva de la cohorte para tener una visión general de las características de los pacientes.
-
-```{r summary_table_1}
-tabla_1 <- master_dataset |>
-  select(
-    age, sex, bmi, smoker, pack_year, age_diagnosis, feno_mean, 
-    eosinophils_n, ige_total, crs_w_np, exac_last_year_n, pct_pred_fev1, is_on_biologic, treatment
-  ) |>
-  tbl_summary(
-    label = list(
-      sex ~ "Sexo",
-      feno_mean ~ "FeNO basal (ppb)",
-      eosinophils_n ~ "Eosinófilos (n)",
-      crs_w_np ~ "Pólipos Nasales (CRSwNP)",
-      exac_last_year_n ~ "Nº Exacerbaciones (año previo)",
-      pct_pred_fev1 ~ "FEV1 % predicho",
-      is_on_biologic ~ "En tratamiento biológico"
-    ), 
-    by = treatment
-  ) |>
-  add_overall() |>
-  bold_labels()
-
-# Mostramos la tabla en el reporte
-tabla_1
-
-tabla_1 |>
-  as_gt() |>
-  gtsave(filename = file.path(ouput_path, "tabla_1_descriptiva.png"))
-```
-
----
-
-## 3. Análisis Univariado: Distribución de Variables Clave
-
-Analizamos las variables más importantes una por una para entender su comportamiento.
-
-### 3.1. Biomarcadores y Función Pulmonar
-
-```{r plot_biomarkers}
-# Histogramas para ver la distribución
-p1 <- ggplot(master_dataset, aes(x = feno_mean)) + geom_histogram(bins = 15, fill = "skyblue", color = "black") + labs(title = "Distribución del FeNO")
-p2 <- ggplot(master_dataset, aes(x = eosinophils_n)) + geom_histogram(bins = 15, fill = "salmon", color = "black") + labs(title = "Distribución de Eosinófilos")
-p3 <- ggplot(master_dataset, aes(x = pct_pred_fev1)) + geom_histogram(bins = 15, fill = "lightgreen", color = "black") + labs(title = "Distribución de FEV1 % pred.")
-
-cowplot::plot_grid(p1, p2, p3, ncol = 3)
-```
-**Interpretación:** Observamos si las distribuciones son simétricas o sesgadas. Los biomarcadores como el FeNO suelen estar sesgados a la derecha.
-
-### 3.2. Cuestionarios Principales
-
-```{r plot_questionnaires}
-p1 <- ggplot(master_dataset, aes(x = act)) + geom_histogram(bins = 10) + labs(title = "ACT (Control del Asma)")
-p2 <- ggplot(master_dataset, aes(x = snot22)) + geom_histogram(bins = 15) + labs(title = "SNOT-22 (Síntomas Nasales)")
-
-cowplot::plot_grid(p1, p2, ncol = 2)
-```
-
----
-
-## 4. Análisis Bivariado: Buscando Relaciones
-
-Aquí empezamos a cruzar variables para testar hipótesis.
-
-### 4.1. Matriz de Correlación Numérica
-
-```{r plot_correlation}
-# Seleccionamos las variables numéricas más relevantes
-numeric_vars <- master_dataset |>
-  select(feno_mean, eosinophils_n, ige_total, pct_pred_fev1, act, snot22, age, bmi, pack_year)
-
-# Calculamos la matriz de correlación de Spearman
-corr_matrix <- cor(numeric_vars, method = "spearman", use = "complete.obs")
-
-# Visualizamos la matriz
-corrplot::corrplot(corr_matrix, method = "color", type = "upper", order = "hclust",
-         addCoef.col = "black", tl.col = "black", tl.srt = 45, number.cex = 0.7)
-```
-**Interpretación:** La matriz nos da una visión rápida de las correlaciones. Buscamos cuadrados de color intenso (rojo para negativo, azul para positivo).
-
-### 4.2. Relaciones Clave con el FeNO
-
-```{r plot_feno_relations}
-# Boxplot de FeNO por presencia de pólipos
-p1 <- ggplot(master_dataset, aes(x = crs_w_np, y = feno_mean, fill = crs_w_np)) +
-  geom_boxplot() +
-  labs(title = "FeNO por Presencia de Pólipos", x = "Pólipos Nasales", y = "FeNO (ppb)") +
-  theme(legend.position = "none")
-
-# Scatter plot de FeNO vs Eosinófilos
-p2 <- ggplot(master_dataset, aes(x = eosinophils_n, y = feno_mean, color = crs_w_np)) +
-  geom_point(size = 3, alpha = 0.7) +
-  labs(title = "FeNO vs. Eosinófilos", x = "Eosinófilos (n)", y = "FeNO (ppb)", color = "Pólipos")
-
-cowplot::plot_grid(p1, p2, ncol = 2)
-```
-**Interpretación:** Estos gráficos nos permiten testar directamente la hipótesis. El boxplot muestra si hay diferencias en el FeNO según la presencia de pólipos. El scatter plot explora la relación entre los dos biomarcadores T2 principales.
-
----
-
-## 5. Análisis Multivariado (PCA)
-
-Finalmente, usamos PCA para obtener una visión global de la estructura de los datos.
-
-```{r pca_analysis}
-# Selección de variables para el PCA
-pca_vars <- master_dataset |>
-  select(feno_mean, eosinophils_n, ige_total, pct_pred_fev1, snot22, act, age_diagnosis) |>
-  drop_na() # El PCA no funciona con NAs, los eliminamos solo para esta visualización
-
-# Estandarizamos los datos
-pca_vars_scaled <- scale(pca_vars)
-
-# Ejecutamos el PCA
-pca_results <- prcomp(pca_vars_scaled, center = TRUE, scale. = TRUE)
-
-# Visualizamos el PCA, coloreando por una variable de interés
-fviz_pca_ind(pca_results,
-             geom.ind = "point",
-             col.ind = master_dataset |> drop_na(all_of(colnames(pca_vars))) |> pull(crs_w_np),
-             palette = "jco",
-             addEllipses = TRUE,
-             legend.title = "Pólipos Nasales")
-```
-**Interpretación:** El PCA nos muestra un "mapa" de los pacientes. Si los puntos de un mismo color (mismo grupo) se agrupan, es una señal de que existen patrones claros en tus datos.
-
-
----
-
-## 6. Imputación de Datos Faltantes
+## Imputación de Datos Faltantes
 
 Antes de realizar las pruebas estadísticas finales, necesitamos un dataset 100% completo. Usaremos la imputación k-NN para rellenar los `NA`s restantes en nuestras variables numéricas clave.
 
@@ -177,12 +47,366 @@ library(VIM)
 
 # 2. Aplicar la imputación k-NN (usando k=5 vecinos)
 imputed_data <- kNN(master_dataset, k = 3, imp_var = FALSE)
+```
 
-# 4. Verificación Final
-# Comprobamos que ya no quedan valores faltantes en el dataset de análisis
-cat("Valores faltantes en el dataset final:\n")
-print(colSums(is.na(imputed_data)))
 
+## Visión General y "Tabla 1"
+
+El primer paso es crear la tabla descriptiva de la cohorte para tener una visión general de las características de los pacientes.
+
+```{r summary_table_1}
+tabla_1 <- imputed_data |>
+  select(
+    age, sex, bmi, smoker, pack_year, age_diagnosis, feno_mean, 
+    eosinophils_n, ige_total, crs_w_np, exac_last_year_n, fev1, fvc, fev1_fvc, is_on_biologic,
+  ) |>
+  tbl_summary(
+    label = list(
+      sex ~ "Sexo",
+      feno_mean ~ "FeNO basal (ppb)",
+      eosinophils_n ~ "Eosinófilos (n)",
+      crs_w_np ~ "Pólipos Nasales (CRSwNP)",
+      exac_last_year_n ~ "Nº Exacerbaciones (año previo)",
+      is_on_biologic ~ "En tratamiento biológico"
+    )
+  ) |>
+  bold_labels()
+
+# Mostramos la tabla en el reporte
+tabla_1
+
+```
+
+---
+
+## Análisis Univariado: Distribución de Variables Clave
+
+Analizamos las variables más importantes una por una para entender su comportamiento.
+
+### Biomarcadores y Función Pulmonar
+
+```{r plot_biomarkers}
+# Histogramas para ver la distribución
+p1 <- ggplot(imputed_data, aes(x = feno_mean)) + geom_histogram(bins = 15, fill = "skyblue", color = "black") + labs(title = "Distribución del FeNO")
+p2 <- ggplot(imputed_data, aes(x = eosinophils_n)) + geom_histogram(bins = 15, fill = "salmon", color = "black") + labs(title = "Distribución de Eosinófilos")
+p3 <- ggplot(imputed_data, aes(x = eosinophils_pct)) + geom_histogram(bins = 15, fill = "red4", color = "black") + labs(title = "Distribución de Eosinófilos (%)")
+p4 <- ggplot(imputed_data, aes(x = pct_pred_fev1)) + geom_histogram(bins = 15, fill = "lightgreen", color = "black") + labs(title = "Distribución de FEV1 % pred.")
+p5 <- ggplot(imputed_data, aes(x = fev1_fvc)) + geom_histogram(bins = 15, fill = "green4", color = "black") + labs(title = "Distribución de FEV1/FVC")
+
+cowplot::plot_grid(p1, p2, p3, p4, p5, ncol = 3)
+```
+
+
+### Cuestionarios Principales
+
+```{r plot_questionnaires}
+p1 <- ggplot(imputed_data, aes(x = act)) + geom_histogram(bins = 10) + labs(title = "ACT (Control del Asma)")
+p2 <- ggplot(imputed_data, aes(x = snot22)) + geom_histogram(bins = 15) + labs(title = "SNOT-22 (Síntomas Nasales)")
+
+cowplot::plot_grid(p1, p2, ncol = 2)
+```
+
+---
+
+## Análisis Bivariado: Buscando Relaciones
+
+Aquí empezamos a cruzar variables para testar hipótesis.
+
+### Matriz de Correlación Numérica
+
+```{r plot_correlation}
+# Seleccionamos las variables numéricas más relevantes
+numeric_vars <- imputed_data |>
+  select(where(is.numeric))
+
+# Calculamos la matriz de correlación de Spearman
+corr_matrix <- cor(numeric_vars, method = "spearman", use = "complete.obs")
+
+# Visualizamos la matriz
+corrplot::corrplot(corr_matrix, method = "color", type = "upper", order = "hclust",
+         addCoef.col = "black", tl.col = "black", tl.srt = 45, number.cex = 0.7)
+```
+
+
+
+### Relaciones Clave con el FeNO
+
+```{r plot_feno_relations}
+# Boxplot de FeNO por presencia de pólipos
+p1 <- ggplot(imputed_data, aes(x = crs_w_np, y = feno_mean, fill = crs_w_np)) +
+  geom_boxplot() +
+  labs(title = "FeNO por Presencia de Pólipos", x = "Pólipos Nasales", y = "FeNO (ppb)") +
+  theme(legend.position = "none") +
+  stat_compare_means(method = "wilcox.test")
+
+# Boxplot de FeNO por presencia de biológicos
+p2 <- ggplot(imputed_data, aes(x = is_on_biologic, y = feno_mean, fill = is_on_biologic)) +
+  geom_boxplot() +
+  labs(title = "FeNO por Tratamiento Biológico", x = "En Tratamiento Biológico", y = "FeNO (ppb)") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+# Boxplot de FeNO por smoking status
+p3 <- ggplot(imputed_data, aes(x = smoker, y = feno_mean, fill = smoker)) +
+  geom_boxplot() +
+  labs(title = "FeNO por Estado de Fumador", x = "Estado de Fumador", y = "FeNO (ppb)") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+cowplot::plot_grid(p1, p2, p3, ncol = 3)
+```
+
+
+### Relaciones Clave con Eosinofilos
+
+```{r}
+# Boxplot de Eosinófilos por presencia de pólipos
+p1 <- ggplot(imputed_data, aes(x = crs_w_np, y = eosinophils_n, fill = crs_w_np)) +
+  geom_boxplot() +
+  labs(title = "Eosinófilos por Presencia de Pólipos", x = "Pólipos Nasales", y = "Eosinófilos (n)") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+# Boxplot de Eosinófilos por presencia de biológicos
+p2 <- ggplot(imputed_data, aes(x = is_on_biologic, y = eosinophils_n, fill = is_on_biologic)) +
+  geom_boxplot() +
+  labs(title = "Eosinófilos por Tratamiento Biológico", x = "En Tratamiento Biológico", y = "Eosinófilos (n)") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+cowplot::plot_grid(p1, p2, ncol = 2)
+```
+
+### Relaciones Clave con ige total
+
+```{r}
+# Boxplot de IgE total por presencia de pólipos
+p1 <- ggplot(imputed_data, aes(x = crs_w_np, y = ige_total, fill = crs_w_np)) +
+  geom_boxplot() +
+  labs(title = "IgE Total por Presencia de Pólipos", x = "Pólipos Nasales", y = "IgE Total (UI/mL)") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+# Boxplot de IgE total por presencia de biológicos
+p2 <- ggplot(imputed_data, aes(x = is_on_biologic, y = ige_total, fill = is_on_biologic)) +
+  geom_boxplot() +
+  labs(title = "IgE Total por Tratamiento Biológico", x = "En Tratamiento Biológico", y = "IgE Total (UI/mL)") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+```
+
+### Relaciones Clave con snot22
+```{r}
+# Boxplot de SNOT-22 por presencia de pólipos
+p1 <- ggplot(imputed_data, aes(x = crs_w_np, y = snot22, fill = crs_w_np)) +
+  geom_boxplot() +
+  labs(title = "SNOT-22 por Presencia de Pólipos", x = "Pólipos Nasales", y = "SNOT-22") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+# Boxplot de SNOT-22 por presencia de biológicos
+p2 <- ggplot(imputed_data, aes(x = is_on_biologic, y = snot22, fill = is_on_biologic)) +
+  geom_boxplot() +
+  labs(title = "SNOT-22 por Tratamiento Biológico", x = "En Tratamiento Biológico", y = "SNOT-22") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+cowplot::plot_grid(p1, p2, ncol = 2)
+```
+
+### Scatter Plots:
+
+```{r}
+# Scatter plot de FeNO vs Eosinófilos
+p1 <- ggplot(imputed_data, aes(x = eosinophils_pct, y = feno_mean)) +
+  geom_point(size = 3, alpha = 0.7) +
+  facet_wrap(
+    ~ crs_w_np,
+    labeller = labeller(crs_w_np = c("no" = "Sin Pólipos", "yes" = "Con Pólipos"))
+    ) +
+  labs(title = "FeNO vs. Eosinófilos (%)", x = "Eosinófilos (%)", y = "FeNO (ppb)") +
+  stat_cor(method = "spearman")
+
+#scatter plot feno vs snot22
+p2 <- ggplot(imputed_data, aes(x = snot22, y = feno_mean)) +
+  geom_point(size = 3, alpha = 0.7) +
+  facet_wrap(
+    ~ crs_w_np,
+    labeller = labeller(crs_w_np = c("no" = "Sin Pólipos", "yes" = "Con Pólipos"))
+    ) +
+  labs(title = "FeNO vs. SNOT-22", x = "SNOT-22", y = "FeNO (ppb)") +
+  stat_cor(method = "spearman")
+
+cowplot::plot_grid(p1, p2, ncol = 1)
+```
+
+
+```{r}
+# Scatter plot de FeNO vs Eosinófilos
+p1 <- ggplot(imputed_data, aes(x = eosinophils_pct, y = feno_mean)) +
+  geom_point(size = 3, alpha = 0.7) +
+  facet_wrap(
+    ~ is_on_biologic,
+    labeller = labeller(is_on_biologic = c("FALSE" = "No en Biológico", "TRUE" = "En Biológico"))
+    ) +
+  labs(title = "FeNO vs. Eosinófilos (%)", x = "Eosinófilos (%)", y = "FeNO (ppb)") +
+  stat_cor(method = "spearman")
+
+#scatter plot feno vs snot22
+p2 <- ggplot(imputed_data, aes(x = snot22, y = feno_mean)) +
+  geom_point(size = 3, alpha = 0.7) +
+  facet_wrap(
+    ~ is_on_biologic,
+    labeller = labeller(is_on_biologic = c("FALSE" = "No en Biológico", "TRUE" = "En Biológico"))
+    ) +
+  labs(title = "FeNO vs. SNOT-22", x = "SNOT-22", y = "FeNO (ppb)") +
+  stat_cor(method = "spearman")
+
+cowplot::plot_grid(p1, p2, ncol = 1)
+```
+
+
+## Análisis tres variables: Buscando Relaciones
+
+
+```{r}
+p1 <- ggplot(imputed_data, aes(x = crs_w_np, y = feno_mean, fill = crs_w_np)) +
+  geom_boxplot() +
+  facet_wrap(
+    ~ is_on_biologic,
+    labeller = labeller(is_on_biologic = c("FALSE" = "No en Biológico", "TRUE" = "En Biológico"))
+    ) +
+  labs(title = "FeNO por Presencia de Pólipos y Tratamiento Biológico", x = "Pólipos Nasales", y = "FeNO (ppb)") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+p2 <- ggplot(imputed_data, aes(x = is_on_biologic, y = feno_mean, fill = is_on_biologic)) +
+  geom_boxplot() +
+  facet_wrap(
+    ~ crs_w_np,
+    labeller = labeller(crs_w_np = c("no" = "Sin Pólipos", "yes" = "Con Pólipos"))
+    ) +
+  labs(title = "FeNO por Tratamiento Biológico y Presencia de Pólipos", x = "En Tratamiento Biológico", y = "FeNO (ppb)") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+cowplot::plot_grid(p1, p2, ncol = 1)
+```
+
+```{r}
+p1 <- ggplot(imputed_data, aes(x = crs_w_np, y = eosinophils_n, fill = crs_w_np)) +
+  geom_boxplot() +
+  facet_wrap(
+    ~ is_on_biologic,
+    labeller = labeller(is_on_biologic = c("FALSE" = "No en Biológico", "TRUE" = "En Biológico"))
+    ) +
+  labs(title = "Eosinófilos por Presencia de Pólipos y Tratamiento Biológico", x = "Pólipos Nasales", y = "Eosinófilos (n)") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+p2 <- ggplot(imputed_data, aes(x = is_on_biologic, y = eosinophils_n, fill = is_on_biologic)) +
+  geom_boxplot() +
+  facet_wrap(
+    ~ crs_w_np,
+    labeller = labeller(crs_w_np = c("no" = "Sin Pólipos", "yes" = "Con Pólipos"))
+    ) +
+  labs(title = "Eosinófilos por Tratamiento Biológico y Presencia de Pólipos", x = "En Tratamiento Biológico", y = "Eosinófilos (n)") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+cowplot::plot_grid(p1, p2, ncol = 2)
+```
+
+
+```{r}
+p1 <- ggplot(imputed_data, aes(x = crs_w_np, y = ige_total, fill = crs_w_np)) +
+  geom_boxplot() +
+  facet_wrap(
+    ~ is_on_biologic,
+    labeller = labeller(is_on_biologic = c("FALSE" = "No en Biológico", "TRUE" = "En Biológico"))
+    ) +
+  labs(title = "IgE Total por Presencia de Pólipos y Tratamiento Biológico", x = "Pólipos Nasales", y = "IgE Total") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+p2 <- ggplot(imputed_data, aes(x = is_on_biologic, y = ige_total, fill = is_on_biologic)) +
+  geom_boxplot() +
+  facet_wrap(
+    ~ crs_w_np,
+    labeller = labeller(crs_w_np = c("no" = "Sin Pólipos", "yes" = "Con Pólipos"))
+    ) +
+  labs(title = "IgE Total por Tratamiento Biológico y Presencia de Pólipos", x = "En Tratamiento Biológico", y = "IgE Total") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+cowplot::plot_grid(p1, p2, ncol = 2)
+```
+
+
+
+```{r}
+p1 <- ggplot(imputed_data, aes(x = crs_w_np, y = snot22, fill = crs_w_np)) +
+  geom_boxplot() +
+  facet_wrap(
+    ~ is_on_biologic,
+    labeller = labeller(is_on_biologic = c("FALSE" = "No en Biológico", "TRUE" = "En Biológico"))
+    ) +
+  labs(title = "SNOT-22 por Presencia de Pólipos y Tratamiento Biológico", x = "Pólipos Nasales", y = "SNOT-22") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+p2 <- ggplot(imputed_data, aes(x = is_on_biologic, y = snot22, fill = is_on_biologic)) +
+  geom_boxplot() +
+  facet_wrap(
+    ~ crs_w_np,
+    labeller = labeller(crs_w_np = c("no" = "Sin Pólipos", "yes" = "Con Pólipos"))
+    ) +
+  labs(title = "SNOT-22 por Tratamiento Biológico y Presencia de Pólipos", x = "En Tratamiento Biológico", y = "SNOT-22") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+p3 <- ggplot(imputed_data, aes(x = crs_w_np, y = tai10, fill = crs_w_np)) +
+  geom_boxplot() +
+  facet_wrap(
+    ~ is_on_biologic,
+    labeller = labeller(is_on_biologic = c("FALSE" = "No en Biológico", "TRUE" = "En Biológico"))
+    ) +
+  labs(title = "TAI-10 por Presencia de Pólipos y Tratamiento Biológico", x = "Pólipos Nasales", y = "TAI-10") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+p4 <- ggplot(imputed_data, aes(x = is_on_biologic, y = tai10, fill = is_on_biologic)) +
+  geom_boxplot() +
+  facet_wrap(
+    ~ crs_w_np,
+    labeller = labeller(crs_w_np = c("no" = "Sin Pólipos", "yes" = "Con Pólipos"))
+    ) +
+  labs(title = "TAI-10 por Tratamiento Biológico y Presencia de Pólipos", x = "En Tratamiento Biológico", y = "TAI-10") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+p5 <- ggplot(imputed_data, aes(x = crs_w_np, y = act, fill = crs_w_np)) +
+  geom_boxplot() +
+  facet_wrap(
+    ~ is_on_biologic,
+    labeller = labeller(is_on_biologic = c("FALSE" = "No en Biológico", "TRUE" = "En Biológico"))
+    ) +
+  labs(title = "ACT por Presencia de Pólipos y Tratamiento Biológico", x = "Pólipos Nasales", y = "ACT") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+p6 <- ggplot(imputed_data, aes(x = is_on_biologic, y = act, fill = is_on_biologic)) +
+  geom_boxplot() +
+  facet_wrap(
+    ~ crs_w_np,
+    labeller = labeller(crs_w_np = c("no" = "Sin Pólipos", "yes" = "Con Pólipos"))
+    ) +
+  labs(title = "ACT por Tratamiento Biológico y Presencia de Pólipos", x = "En Tratamiento Biológico", y = "ACT") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+
+cowplot::plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2)
 ```
 
 

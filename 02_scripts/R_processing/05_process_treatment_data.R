@@ -193,14 +193,15 @@ process_treatment_data <- function(raw_path, processed_path, scripts_path) {
   medication_summary <- medication_final |>
     group_by(id) |>
     summarise(
-      is_on_ics_laba = any(medication_cat == "ICS+LABA", na.rm = TRUE),
-      is_on_lama = any(medication_cat == "LAMA", na.rm = TRUE),
-      is_on_triple_therapy = any(medication_cat == "ICS+LABA+LAMA", na.rm = TRUE),
-      is_on_ics = any(medication_cat == "ICS", na.rm = TRUE),
-      is_on_antihistamine = any(medication_cat == "Antihistamine (H1)", na.rm = TRUE),
-      is_on_ics_antihistamine = any(medication_cat == "ICS+Antihistamine (H1)", na.rm = TRUE),
-      is_on_biologic = any(medication_cat == "BIOLOGIC", na.rm = TRUE),
-      is_on_ltra = any(medication_cat == "LTRA", na.rm = TRUE)
+      is_on_ics_laba = ifelse(any(medication_cat == "ICS+LABA", na.rm = TRUE), "yes", "no"),
+      is_on_lama = ifelse(any(medication_cat == "LAMA", na.rm = TRUE), "yes", "no"),
+      is_on_triple_therapy = ifelse(any(medication_cat == "ICS+LABA+LAMA", na.rm = TRUE), "yes", "no"),
+      is_on_ics = ifelse(any(medication_cat == "ICS", na.rm = TRUE), "yes", "no"),
+      is_on_antihistamine = ifelse(any(medication_cat == "Antihistamine (H1)", na.rm = TRUE), "yes", "no"),
+      is_on_ics_antihistamine = ifelse(any(medication_cat == "ICS+Antihistamine (H1)", na.rm = TRUE), "yes", "no"),
+      is_on_biologic = ifelse(any(medication_cat == "BIOLOGIC", na.rm = TRUE), "yes", "no"),
+      is_on_ltra = ifelse(any(medication_cat == "LTRA", na.rm = TRUE), "yes", "no"),
+      .groups = "drop"
     )
   
   # --- 7. Guardar Resultado ---

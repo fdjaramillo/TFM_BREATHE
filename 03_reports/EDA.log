@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2025.6.24)  24 AUG 2025 23:52
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2025.6.24)  25 AUG 2025 12:03
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -695,135 +695,190 @@ LaTeX Font Info:    Font shape `T1/fvm/m/it' in size <10> not available
 LaTeX Font Info:    Font shape `T1/fvm/m/sl' will be
 (Font)              scaled to size 7.98004pt on input line 155.
 
+Overfull \vbox (0.84322pt too high) detected at line 194
+ []
+
+
 
 [1
 
 {/Users/davidjaramillo/Library/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/Users/davidjaramillo/Library/TinyTeX/texmf-dist/fonts/enc/dvips/base/8r.enc}{/Users/davidjaramillo/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc}]
-LaTeX Font Info:    Trying to load font information for TS1+fvm on input line 212.
+LaTeX Font Info:    Trying to load font information for TS1+fvm on input line 227.
 (/Users/davidjaramillo/Library/TinyTeX/texmf-dist/tex/latex/bera/ts1fvm.fd
 File: ts1fvm.fd 2004/09/07 scalable font definitions for TS1/fvm.
 )
 LaTeX Font Info:    Font shape `TS1/fvm/m/n' will be
-(Font)              scaled to size 7.98004pt on input line 212.
-LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 228.
+(Font)              scaled to size 7.98004pt on input line 227.
+LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 240.
 (/Users/davidjaramillo/Library/TinyTeX/texmf-dist/tex/latex/lm/ot1lmr.fd
 File: ot1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-LaTeX Font Info:    Trying to load font information for OML+lmm on input line 228.
+LaTeX Font Info:    Trying to load font information for OML+lmm on input line 240.
 (/Users/davidjaramillo/Library/TinyTeX/texmf-dist/tex/latex/lm/omllmm.fd
 File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 228.
+LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 240.
 (/Users/davidjaramillo/Library/TinyTeX/texmf-dist/tex/latex/lm/omslmsy.fd
 File: omslmsy.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 228.
+LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 240.
 (/Users/davidjaramillo/Library/TinyTeX/texmf-dist/tex/latex/lm/omxlmex.fd
 File: omxlmex.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <12> on input line 228.
+(Font)              <12> on input line 240.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <8> on input line 228.
+(Font)              <8> on input line 240.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <6> on input line 228.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 228.
+(Font)              <6> on input line 240.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 240.
 (/Users/davidjaramillo/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 228.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 240.
 (/Users/davidjaramillo/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
 LaTeX Font Info:    Font shape `T1/lmss/m/it' in size <8> not available
-(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 230.
-LaTeX Font Info:    Trying to load font information for TS1+lmss on input line 252.
+(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 242.
+LaTeX Font Info:    Trying to load font information for TS1+lmss on input line 258.
 (/Users/davidjaramillo/Library/TinyTeX/texmf-dist/tex/latex/lm/ts1lmss.fd
 File: ts1lmss.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-Overfull \hbox (243.99988pt too wide) in alignment at lines 228--268
-[] [] [] [] 
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 270--271
+Underfull \hbox (badness 10000) in paragraph at lines 275--276
 
  []
 
 
 Package hyperref Warning: The anchor of a bookmark and its parent's must not
-(hyperref)                be the same. Added a new anchor on input line 289.
+(hyperref)                be the same. Added a new anchor on input line 285.
 
-<EDA_files/figure-latex/plot_biomarkers-1.pdf, id=49, 573.14125pt x 351.3125pt>
-File: EDA_files/figure-latex/plot_biomarkers-1.pdf Graphic file (type pdf)
-<use EDA_files/figure-latex/plot_biomarkers-1.pdf>
-Package pdftex.def Info: EDA_files/figure-latex/plot_biomarkers-1.pdf  used on input line 303.
-(pdftex.def)             Requested size: 341.43867pt x 209.28815pt.
 
 
 [2]
-Overfull \vbox (155.28152pt too high) has occurred while \output is active []
+<EDA_files/figure-latex/plot_biomarkers-1.pdf, id=65, 573.14125pt x 351.3125pt>
+File: EDA_files/figure-latex/plot_biomarkers-1.pdf Graphic file (type pdf)
+<use EDA_files/figure-latex/plot_biomarkers-1.pdf>
+Package pdftex.def Info: EDA_files/figure-latex/plot_biomarkers-1.pdf  used on input line 301.
+(pdftex.def)             Requested size: 341.43867pt x 209.28815pt.
 
 
-
-[3{/Users/davidjaramillo/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc} <./EDA_files/figure-latex/plot_biomarkers-1.pdf>]
-<EDA_files/figure-latex/plot_questionnaires-1.pdf, id=68, 568.1225pt x 349.305pt>
+[3{/Users/davidjaramillo/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}]
+<EDA_files/figure-latex/plot_questionnaires-1.pdf, id=73, 568.1225pt x 349.305pt>
 File: EDA_files/figure-latex/plot_questionnaires-1.pdf Graphic file (type pdf)
 <use EDA_files/figure-latex/plot_questionnaires-1.pdf>
-Package pdftex.def Info: EDA_files/figure-latex/plot_questionnaires-1.pdf  used on input line 319.
+Package pdftex.def Info: EDA_files/figure-latex/plot_questionnaires-1.pdf  used on input line 315.
 (pdftex.def)             Requested size: 341.44826pt x 209.93639pt.
 
 Package hyperref Warning: The anchor of a bookmark and its parent's must not
-(hyperref)                be the same. Added a new anchor on input line 327.
+(hyperref)                be the same. Added a new anchor on input line 323.
 
-<EDA_files/figure-latex/plot_correlation-1.pdf, id=69, 373.395pt x 357.335pt>
+
+
+[4 <./EDA_files/figure-latex/plot_biomarkers-1.pdf> <./EDA_files/figure-latex/plot_questionnaires-1.pdf>]
+<EDA_files/figure-latex/plot_correlation-1.pdf, id=92, 365.365pt x 357.335pt>
 File: EDA_files/figure-latex/plot_correlation-1.pdf Graphic file (type pdf)
 <use EDA_files/figure-latex/plot_correlation-1.pdf>
-Package pdftex.def Info: EDA_files/figure-latex/plot_correlation-1.pdf  used on input line 345.
-(pdftex.def)             Requested size: 341.44797pt x 326.76202pt.
-
-
-[4 <./EDA_files/figure-latex/plot_questionnaires-1.pdf>]
-<EDA_files/figure-latex/plot_feno_relations-1.pdf, id=81, 562.1pt x 351.3125pt>
-File: EDA_files/figure-latex/plot_feno_relations-1.pdf Graphic file (type pdf)
-<use EDA_files/figure-latex/plot_feno_relations-1.pdf>
-Package pdftex.def Info: EDA_files/figure-latex/plot_feno_relations-1.pdf  used on input line 369.
-(pdftex.def)             Requested size: 341.431pt x 213.39436pt.
+Package pdftex.def Info: EDA_files/figure-latex/plot_correlation-1.pdf  used on input line 341.
+(pdftex.def)             Requested size: 341.44728pt x 333.94295pt.
 
 
 [5 <./EDA_files/figure-latex/plot_correlation-1.pdf>]
-<EDA_files/figure-latex/pca_analysis-1.pdf, id=94, 562.1pt x 351.3125pt>
-File: EDA_files/figure-latex/pca_analysis-1.pdf Graphic file (type pdf)
-<use EDA_files/figure-latex/pca_analysis-1.pdf>
-Package pdftex.def Info: EDA_files/figure-latex/pca_analysis-1.pdf  used on input line 403.
-(pdftex.def)             Requested size: 341.431pt x 213.39436pt.
+<EDA_files/figure-latex/plot_feno_relations-1.pdf, id=105, 573.14125pt x 351.3125pt>
+File: EDA_files/figure-latex/plot_feno_relations-1.pdf Graphic file (type pdf)
+<use EDA_files/figure-latex/plot_feno_relations-1.pdf>
+Package pdftex.def Info: EDA_files/figure-latex/plot_feno_relations-1.pdf  used on input line 373.
+(pdftex.def)             Requested size: 341.43867pt x 209.28815pt.
 
 
 [6 <./EDA_files/figure-latex/plot_feno_relations-1.pdf>]
+<EDA_files/figure-latex/unnamed-chunk-1-1.pdf, id=117, 568.1225pt x 351.3125pt>
+File: EDA_files/figure-latex/unnamed-chunk-1-1.pdf Graphic file (type pdf)
+<use EDA_files/figure-latex/unnamed-chunk-1-1.pdf>
+Package pdftex.def Info: EDA_files/figure-latex/unnamed-chunk-1-1.pdf  used on input line 398.
+(pdftex.def)             Requested size: 341.44826pt x 211.14291pt.
 
-[7 <./EDA_files/figure-latex/pca_analysis-1.pdf>]
 
-[8] (./EDA.aux)
+[7 <./EDA_files/figure-latex/unnamed-chunk-1-1.pdf>]
+<EDA_files/figure-latex/unnamed-chunk-3-1.pdf, id=130, 568.1225pt x 351.3125pt>
+File: EDA_files/figure-latex/unnamed-chunk-3-1.pdf Graphic file (type pdf)
+<use EDA_files/figure-latex/unnamed-chunk-3-1.pdf>
+Package pdftex.def Info: EDA_files/figure-latex/unnamed-chunk-3-1.pdf  used on input line 443.
+(pdftex.def)             Requested size: 341.44826pt x 211.14291pt.
+<EDA_files/figure-latex/unnamed-chunk-4-1.pdf, id=131, 571.13374pt x 349.305pt>
+File: EDA_files/figure-latex/unnamed-chunk-4-1.pdf Graphic file (type pdf)
+<use EDA_files/figure-latex/unnamed-chunk-4-1.pdf>
+Package pdftex.def Info: EDA_files/figure-latex/unnamed-chunk-4-1.pdf  used on input line 474.
+(pdftex.def)             Requested size: 341.43668pt x 208.82242pt.
+
+
+[8 <./EDA_files/figure-latex/unnamed-chunk-3-1.pdf>]
+<EDA_files/figure-latex/unnamed-chunk-5-1.pdf, id=143, 571.13374pt x 349.305pt>
+File: EDA_files/figure-latex/unnamed-chunk-5-1.pdf Graphic file (type pdf)
+<use EDA_files/figure-latex/unnamed-chunk-5-1.pdf>
+Package pdftex.def Info: EDA_files/figure-latex/unnamed-chunk-5-1.pdf  used on input line 503.
+(pdftex.def)             Requested size: 341.43668pt x 208.82242pt.
+
+
+[9 <./EDA_files/figure-latex/unnamed-chunk-4-1.pdf>]
+<EDA_files/figure-latex/unnamed-chunk-6-1.pdf, id=162, 568.1225pt x 351.3125pt>
+File: EDA_files/figure-latex/unnamed-chunk-6-1.pdf Graphic file (type pdf)
+<use EDA_files/figure-latex/unnamed-chunk-6-1.pdf>
+Package pdftex.def Info: EDA_files/figure-latex/unnamed-chunk-6-1.pdf  used on input line 534.
+(pdftex.def)             Requested size: 341.44826pt x 211.14291pt.
+
+
+[10 <./EDA_files/figure-latex/unnamed-chunk-5-1.pdf>]
+<EDA_files/figure-latex/unnamed-chunk-7-1.pdf, id=180, 573.14125pt x 351.3125pt>
+File: EDA_files/figure-latex/unnamed-chunk-7-1.pdf Graphic file (type pdf)
+<use EDA_files/figure-latex/unnamed-chunk-7-1.pdf>
+Package pdftex.def Info: EDA_files/figure-latex/unnamed-chunk-7-1.pdf  used on input line 563.
+(pdftex.def)             Requested size: 341.43867pt x 209.28815pt.
+
+
+[11 <./EDA_files/figure-latex/unnamed-chunk-6-1.pdf>]
+<EDA_files/figure-latex/unnamed-chunk-8-1.pdf, id=192, 573.14125pt x 351.3125pt>
+File: EDA_files/figure-latex/unnamed-chunk-8-1.pdf Graphic file (type pdf)
+<use EDA_files/figure-latex/unnamed-chunk-8-1.pdf>
+Package pdftex.def Info: EDA_files/figure-latex/unnamed-chunk-8-1.pdf  used on input line 592.
+(pdftex.def)             Requested size: 341.43867pt x 209.28815pt.
+
+
+[12 <./EDA_files/figure-latex/unnamed-chunk-7-1.pdf>]
+Underfull \vbox (badness 10000) detected at line 659
+ []
+
+
+
+[13 <./EDA_files/figure-latex/unnamed-chunk-8-1.pdf>]
+<EDA_files/figure-latex/unnamed-chunk-9-1.pdf, id=216, 573.14125pt x 351.3125pt>
+File: EDA_files/figure-latex/unnamed-chunk-9-1.pdf Graphic file (type pdf)
+<use EDA_files/figure-latex/unnamed-chunk-9-1.pdf>
+Package pdftex.def Info: EDA_files/figure-latex/unnamed-chunk-9-1.pdf  used on input line 662.
+(pdftex.def)             Requested size: 341.43867pt x 209.28815pt.
+
+
+[14 <./EDA_files/figure-latex/unnamed-chunk-9-1.pdf>] (./EDA.aux)
  ***********
 LaTeX2e <2025-06-01> patch level 1
 L3 programming layer <2025-05-26>
  ***********
 Package rerunfilecheck Info: File `EDA.out' has not changed.
-(rerunfilecheck)             Checksum: ACFD0E6DC2023809BF0B7AE26D5EFC0D;2426.
+(rerunfilecheck)             Checksum: F41B2D28345FB8C2DFEAA307F2E0317F;3054.
  ) 
 Here is how much of TeX's memory you used:
- 16438 strings out of 469867
- 268722 string characters out of 5483572
- 691508 words of memory out of 5000000
- 44416 multiletter control sequences out of 15000+600000
- 686852 words of font info for 84 fonts, out of 8000000 for 9000
+ 16510 strings out of 469867
+ 272207 string characters out of 5483572
+ 690508 words of memory out of 5000000
+ 44482 multiletter control sequences out of 15000+600000
+ 684084 words of font info for 83 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
  84i,13n,93p,1192b,542s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </Users/davidjaramillo/Library/TinyTeX/texmf-dist/fonts/type1/public/bera/fvmr8a.pfb></Users/davidjaramillo/Library/TinyTeX/texmf-dist/fonts/type1/public/bera/fvmro8a.pfb></Users/davidjaramillo/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmss10.pfb></Users/davidjaramillo/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmss12.pfb></Users/davidjaramillo/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmssbo10.pfb></Users/davidjaramillo/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmssbx10.pfb></Users/davidjaramillo/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsso8.pfb></Users/davidjaramillo/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></Users/davidjaramillo/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb>
-Output written on EDA.pdf (8 pages, 203028 bytes).
+Output written on EDA.pdf (14 pages, 262085 bytes).
 PDF statistics:
- 179 PDF objects out of 1000 (max. 8388607)
- 133 compressed objects within 2 object streams
- 12 named destinations out of 1000 (max. 500000)
- 106 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 279 PDF objects out of 1000 (max. 8388607)
+ 205 compressed objects within 3 object streams
+ 18 named destinations out of 1000 (max. 500000)
+ 173 words of extra memory for PDF output out of 10000 (max. 10000000)
 

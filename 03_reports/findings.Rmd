@@ -1,0 +1,240 @@
+---
+title: "Findings"
+author: "David Jaramillo"
+date: "`r Sys.Date()`"
+output: 
+  BiocStyle::pdf_document:
+    number_sections: false
+    toc: false
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.height = 6)
+library(tidyverse)
+library(gtsummary)
+library(corrplot)
+library(factoextra)
+library(gt)
+library(ggpubr)
+library(patchwork)
+```
+
+
+## Carga y Preparación de Datos
+
+```{r load_data}
+# Definimos las rutas
+processed_data_path <- "../01_data_processed/v2.0"
+ouput_path <- "../04_results/v2.0"
+
+# Cargamos el dataset maestro
+master_dataset <- readRDS(file.path(processed_data_path, "master_dataset.rds"))
+
+master_dataset <- master_dataset |> 
+  select(!c(pct_pred_fvc, treatment, diagnosis))
+```
+
+
+## Imputación de Datos Faltantes
+
+
+```{r impute_data}
+# Cargar la librería para la imputación
+library(VIM)
+
+# 2. Aplicar la imputación k-NN (usando k=5 vecinos)
+imputed_data <- kNN(master_dataset, k = 3, imp_var = FALSE)
+```
+
+
+## Visión General
+
+```{r summary_table_1, fig.height=3}
+tabla_1 <- imputed_data |>
+  select(
+    age, sex, bmi, smoker, exac_last_year_n, age_diagnosis,
+    allergic_rhinitis, crs_w_np,
+    snot22, act, tai10, feno_mean, 
+    eosinophils_n, eosinophils_pct, ige_total, 
+    fev1, fvc, fev1_fvc, 
+    is_on_biologic
+  ) |>
+  tbl_summary(
+    label = list(
+      age ~ "Edad (años)",
+      sex ~ "Sexo",
+      bmi ~ "IMC (kg/m²)",
+      smoker ~ "Estado de Fumador",
+      age_diagnosis ~ "Edad de diagnóstico del asma (años)",
+      crs_w_np ~ "Pólipos Nasales (CRSwNP)",
+      allergic_rhinitis ~ "Rinitis Alérgica",
+      exac_last_year_n ~ "Nº Exacerbaciones (año previo)",
+      snot22 ~ "SNOT-22",
+      act ~ "ACT",
+      feno_mean ~ "FeNO basal (ppb)",
+      eosinophils_n ~ "Eosinófilos (n)",
+      eosinophils_pct ~ "Eosinófilos (%)",
+      ige_total ~ "IgE total (UI/mL)",
+      fev1 ~ "FEV1 (L)",
+      fvc ~ "FVC (L)",
+      fev1_fvc ~ "FEV1/FVC",
+      is_on_biologic ~ "En tratamiento biológico"
+    ),
+    type = list(
+      exac_last_year_n ~ "continuous",
+      crs_w_np ~ "categorical",
+      allergic_rhinitis ~ "categorical"
+    ),
+  ) |>
+  bold_labels()
+
+# Mostramos la tabla en el reporte
+tabla_1
+```
+
+
+## Matriz de Correlación Numérica
+
+```{r plot_correlation, fig.height=8, fig.width=10}
+# Seleccionamos las variables numéricas más relevantes
+numeric_vars <- imputed_data |>
+  select(where(is.numeric))
+
+# Calculamos la matriz de correlación de Spearman
+corr_matrix <- cor(numeric_vars, method = "spearman", use = "complete.obs")
+
+# Visualizamos la matriz
+corrplot::corrplot(corr_matrix, method = "color", type = "upper", order = "hclust",
+         addCoef.col = "black", tl.col = "black", tl.srt = 45, number.cex = 0.7)
+```
+
+## FeNO y age at diagnosis
+```{r fig.height=4}
+ggplot(imputed_data, aes(x = age_diagnosis, y = feno_mean)) +
+  geom_point(size = 3, alpha = 0.7, aes(colour = crs_w_np)) +
+  facet_wrap(
+    ~ crs_w_np,
+    labeller = "label_both"
+    ) +
+  labs(x = "Edad de Diagnóstico del Asma (años)",
+       y = "FeNO (ppb)") +
+  theme(legend.position = "none") +
+  stat_cor(method = "spearman")
+```
+
+## FeNO y tai10
+```{r}
+p1 <- ggplot(imputed_data, aes(x = tai10, y = feno_mean)) +
+  geom_point(size = 3, alpha = 0.7, aes(colour = crs_w_np)) +
+  facet_wrap(
+    ~ crs_w_np,
+    labeller = "label_both"
+    ) +
+  labs(title = "Relación entre FeNO y TAI-10",
+       x = "TAI-10",
+       y = "FeNO (ppb)") +
+  stat_cor(method = "spearman")
+
+p2 <- ggplot(imputed_data, aes(x = tai10, y = feno_mean)) +
+  geom_point(size = 3, alpha = 0.7, aes(colour = is_on_biologic)) +
+  facet_wrap(
+    ~ is_on_biologic,
+    labeller = "label_both"
+    ) +
+  labs(title = "Relación entre FeNO y TAI-10",
+       x = "TAI-10",
+       y = "FeNO (ppb)") +
+  stat_cor(method = "spearman")
+
+p1 + p2 + plot_layout(ncol = 1)
+```
+
+
+## FeNO y eosinófilos por crs_w_np y tratamiento biológico
+```{r plot_feno_relations}
+# Boxplot de FeNO por CRSwNP
+p1 <- ggplot(imputed_data, aes(x = crs_w_np, y = feno_mean, fill = crs_w_np)) +
+  geom_boxplot() +
+  labs(title = "FeNO por CRSwNP", x = "CRSwNP", y = "FeNO (ppb)") +
+  theme(legend.position = "none") +
+  stat_compare_means(method = "wilcox.test")
+
+# Boxplot de FeNO por presencia de biológicos
+p2 <- ggplot(imputed_data, aes(x = is_on_biologic, y = feno_mean, fill = is_on_biologic)) +
+  geom_boxplot() +
+  labs(title = "FeNO por Tratamiento Biológico", x = "En Tratamiento Biológico", y = "FeNO (ppb)") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+p3 <- ggplot(imputed_data, aes(x = crs_w_np, y = eosinophils_n, fill = crs_w_np)) +
+  geom_boxplot() +
+  labs(title = "Eosinófilos por CRSwNP", x = "CRSwNP", y = "Eosinófilos (n)") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+# Boxplot de Eosinófilos por presencia de biológicos
+p4 <- ggplot(imputed_data, aes(x = is_on_biologic, y = eosinophils_n, fill = is_on_biologic)) +
+  geom_boxplot() +
+  labs(title = "Eosinófilos por Tratamiento Biológico", x = "En Tratamiento Biológico", y = "Eosinófilos (n)") +
+  theme(legend.position = "none") +
+  stat_compare_means()
+
+p1 + p2 + p3 + p4 + plot_layout(ncol = 2)
+```
+
+
+## correlacion Feno vs Eosinófilos 
+
+```{r}
+# Scatter plot de FeNO vs Eosinófilos
+p1 <- ggplot(imputed_data, aes(x = eosinophils_n, y = feno_mean)) +
+  geom_point(size = 3, alpha = 0.7, aes(colour = crs_w_np)) +
+  facet_wrap(
+    ~ crs_w_np,
+    labeller = "label_both"
+    ) +
+  labs(title = "crs_w_np", x = "Eosinófilos", y = "FeNO (ppb)") +
+  theme(legend.position = "none") +
+  stat_cor(method = "spearman")
+
+p2 <- ggplot(imputed_data, aes(x = eosinophils_n, y = feno_mean)) +
+  geom_point(size = 3, alpha = 0.7, aes(colour = is_on_biologic)) +
+  facet_wrap(
+    ~ is_on_biologic,
+    labeller = "label_both"
+    ) +
+  labs(title = "biologic", x = "Eosinófilos", y = "FeNO (ppb)") +
+  theme(legend.position = "none") +
+  stat_cor(method = "spearman")
+
+p1+p2+plot_layout(ncol = 1)
+```
+
+## correlacion Feno vs SNOT-22
+
+```{r}
+
+p1 <- ggplot(imputed_data, aes(x = snot22, y = feno_mean)) +
+  geom_point(size = 3, alpha = 0.7, aes(colour = crs_w_np)) +
+  facet_wrap(
+    ~ crs_w_np,
+    labeller = "label_both"
+    ) +
+  labs(title = "crs_w_np", x = "SNOT-22", y = "FeNO (ppb)") +
+  theme(legend.position = "none") +
+  stat_cor(method = "spearman")
+
+p2 <- ggplot(imputed_data, aes(x = snot22, y = feno_mean)) +
+  geom_point(size = 3, alpha = 0.7, aes(colour = is_on_biologic)) +
+  facet_wrap(
+    ~ is_on_biologic,
+    labeller = "label_both"
+    ) +
+  labs(title = "biologic", x = "SNOT-22", y = "FeNO (ppb)") +
+  theme(legend.position = "none") +
+  stat_cor(method = "spearman")
+
+cowplot::plot_grid(p1, p2, ncol = 1)
+```
+

@@ -5,7 +5,7 @@
 # -----------------------------------------------------------------------------
 library(tidyverse)
 
-build_master_dataset <- function(processed_path) {
+build_master_dataset <- function(processed_path, selected_variables = NULL) {
   
   # --- 1. Cargar y Unir todos los Ficheros Procesados ---
   
@@ -49,18 +49,25 @@ build_master_dataset <- function(processed_path) {
   
   # --- 4. Selección Final de Variables para EDA ---
   
-  variables_relevantes_eda <- c(
-    "id", "age", "sex", "bmi", "diagnosis", "age_diagnosis", 
-    "allergic_rhinitis", "crs_w_np", "exac_last_year_n",
-    "miniaqlq", "act",
-    "smoker", "pack_year", 
-    "airq", "snot22", "tai10",
-    "feno_mean", 
-    "eosinophils_n", "eosinophils_pct" , "ige_total",
-    "pct_pred_fev1", "pct_pred_fvc", "fev1_fvc", "fev1", "fvc",
-    "is_on_biologic",
-    "treatment"
-  )
+  # Variables por defecto si no se especifican
+  if (is.null(selected_variables)) {
+    variables_relevantes_eda <- c(
+      "id", "age", "sex", "bmi", "diagnosis", "age_diagnosis", 
+      "allergic_rhinitis", "crs_w_np", "exac_last_year_n",
+      "miniaqlq", "act",
+      "smoker", "pack_year", 
+      "airq", "snot22", "tai10",
+      "feno_mean", 
+      "eosinophils_n", "eosinophils_pct" , "ige_total",
+      "pct_pred_fev1", "pct_pred_fvc", "fev1_fvc", "fev1", "fvc",
+      "is_on_biologic",
+      "treatment"
+    )
+  } else {
+    # Usar las variables especificadas por el usuario
+    # Asegurarse de que 'id' esté incluido
+    variables_relevantes_eda <- unique(c("id", selected_variables))
+  }
   
   eda_dataset <- master_dataset |>
     select(any_of(variables_relevantes_eda)) |> 

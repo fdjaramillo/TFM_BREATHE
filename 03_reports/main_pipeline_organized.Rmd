@@ -10,6 +10,7 @@ output:
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 library(tidyverse)
 library(gtsummary)
+library(gt)
 ```
 
 ## 1. Definición de Rutas y Parámetros
@@ -55,29 +56,249 @@ saveRDS(master_dataset, file.path(processed_data_path, "master_dataset.rds"))
 ```
 
 
-## 4. Análisis Exploratorio de Datos (EDA)
+## 4. Análisis Descriptivo
 
 ```{r}
-ggplot(master_dataset, aes(y = eosinophils_n, x = analysis_group, fill = analysis_group)) +
-  geom_boxplot() +
-  labs(title = "Distribución de FENO por Grupo de Análisis",
-       x = "Grupo de Análisis",
-       y = "FENO (ppb)") +
-  theme_minimal()
+variables_relevantes_eda <- c(
+  "id", "age", "height", "weight", "sex", "bmi", "age_diagnosis", 
+  "allergic_rhinitis", "crs_w_np", "atopic_dermatitis", "eosinophilic_esophagitis",
+  "exac_last_year_n", "smoker",
+  "miniaqlq", "act",
+  "snot22", "tai10",
+  "feno_mean", 
+  "eosinophils_n", "eosinophils_pct" , "ige_total",
+  "pct_pred_fev1", "fev1_fvc", #"fev1", "fvc",
+  "is_on_biologic",
+  "treatment"
+)
+
+source(file.path(scripts_path, "06_build_master_dataset.R"))
+master_dataset <- build_master_dataset(processed_data_path, variables_relevantes_eda)
 ```
 
 
-```{r}
-# scatterplot for snot22 and feno_mean
-ggplot(master_dataset, aes(x = snot22, y = feno_mean, color = crs_w_np)) +
-  geom_point() +
-  #geom_smooth(method = "lm", se = FALSE) +
-  labs(title = "Relación entre SNOT-22 y FENO",
-       x = "SNOT-22",
-       y = "FENO (ppb)") +
-  theme_minimal()
+```{r descriptive_analysis}
+t2_comorbidities <- c(
+  "crs_w_np", "allergic_rhinitis", "atopic_dermatitis", "eosinophilic_esophagitis"
+  )
+descriptive_table <- master_dataset |>
+  select(-id) |>
+  tbl_summary(
+    label = list(
+      sex ~ "Sex (females)",
+      age ~ "Age (years)",
+      height ~ "Height (cm)",
+      weight ~ "Weight (kg)",
+      bmi ~ "BMI (kg/m²)",
+      age_diagnosis ~ "Age of onset (years)",
+      exac_last_year_n ~ "Nº of exacerbations (last year)",
+      crs_w_np ~ "CRSwNP",
+      allergic_rhinitis ~ "Allergic Rhinitis",
+      atopic_dermatitis ~ "Atopic Dermatitis",
+      eosinophilic_esophagitis ~ "Eosinophilic Esophagitis",
+      smoker ~ "Smoking status",
+      miniaqlq ~ "Mini-AQLQ",
+      snot22 ~ "SNOT-22",
+      act ~ "ACT",
+      tai10 ~ "TAI-10",
+      feno_mean ~ "FeNO (ppb)",
+      eosinophils_n ~ "Eosinophils (n)",
+      eosinophils_pct ~ "Eosinophils (%)",
+      ige_total ~ "Total IgE (kU/L)",
+      is_sensitized ~ "Allergic sensitization",
+      pct_pred_fev1 ~ "FEV1 (% predicted)",
+      fev1_fvc ~ "FEV1/FVC (%)",
+      is_on_biologic ~ "Biologic Treatment"
+    ),
+    type = list(
+      exac_last_year_n ~ "continuous",
+      miniaqlq ~ "continuous",
+      sex ~ "dichotomous",
+      is_sensitized ~ "dichotomous"
+    ),
+    value = list(
+      sex ~ "female",
+      is_sensitized ~ "TRUE"
+    ),
+    missing = "no",
+    by = "treatment"
+  ) |>
+  add_p() |> 
+  add_overall() |>
+  #add_n() |>
+  modify_header(label = "**Variable**") |>
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Study Group**") |>
+  bold_labels() |>
+  add_variable_group_header(
+    header = "Comorbidities",
+    variables = any_of(t2_comorbidities)
+  ) |> 
+  remove_bold(columns = label, rows = variable %in% t2_comorbidities) |> 
+  as_gt() |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = label,
+      rows = label == "Comorbidities"
+    )
+  ) |> 
+  tab_options(
+    table.width = pct(80),
+    table.font.size = pct(90)
+    ) |> 
+  opt_vertical_padding(scale = 0.7)
 
-# compute spearman correlation
-cor(master_dataset$snot22, master_dataset$feno_mean, method = "spearman", use = "complete.obs")
+descriptive_table |> gtsave("descriptive_analysis_stratified.png", path = "../04_results/v2.0")
+
+
+
+```
+
+```{r stratified_analysis}
+table_strat_polips <- master_dataset |>
+  select(!c(id, treatment)) |>
+  tbl_summary(
+    label = list(
+      sex ~ "Sex (females)",
+      age ~ "Age (years)",
+      height ~ "Height (cm)",
+      weight ~ "Weight (kg)",
+      bmi ~ "BMI (kg/m²)",
+      age_diagnosis ~ "Age of onset (years)",
+      exac_last_year_n ~ "Nº of exacerbations (last year)",
+      allergic_rhinitis ~ "Allergic Rhinitis",
+      atopic_dermatitis ~ "Atopic Dermatitis",
+      eosinophilic_esophagitis ~ "Eosinophilic Esophagitis",
+      smoker ~ "Smoking status",
+      miniaqlq ~ "Mini-AQLQ",
+      snot22 ~ "SNOT-22",
+      act ~ "ACT",
+      tai10 ~ "TAI-10",
+      feno_mean ~ "FeNO (ppb)",
+      eosinophils_n ~ "Eosinophils (n)",
+      eosinophils_pct ~ "Eosinophils (%)",
+      ige_total ~ "Total IgE (kU/L)",
+      is_sensitized ~ "Allergic sensitization",
+      pct_pred_fev1 ~ "FEV1 (% predicted)",
+      fev1_fvc ~ "FEV1/FVC (%)",
+      is_on_biologic ~ "Biologic Treatment"
+    ),
+    type = list(
+      exac_last_year_n ~ "continuous",
+      miniaqlq ~ "continuous",
+      sex ~ "dichotomous",
+      is_sensitized ~ "dichotomous"
+    ),
+    value = list(
+      sex ~ "female",
+      is_sensitized ~ "TRUE"
+    ),
+    missing = "no",
+    by = "crs_w_np"
+  ) |>
+  add_p() |> 
+  modify_header(label = "**Variable**") |>
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Nasal polyps**") |>
+  bold_labels() |>
+  add_variable_group_header(
+    header = "Comorbidities",
+    variables = any_of(t2_comorbidities)
+  ) |> 
+  remove_bold(columns = label, rows = variable %in% t2_comorbidities) |> 
+  as_gt() |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = label,
+      rows = label == "Comorbidities"
+    )
+  ) |> 
+  tab_options(
+    table.width = pct(80),
+    table.font.size = pct(90)
+    ) |> 
+  opt_vertical_padding(scale = 0.7)
+
+table_strat_polips |> gtsave("analysis_stratified_polips.png", path = "../04_results/v2.0")
+```
+
+```{r}
+table_strat_biologics <- master_dataset |>
+  select(!c(id, treatment)) |>
+  tbl_summary(
+    label = list(
+      sex ~ "Sex (females)",
+      age ~ "Age (years)",
+      height ~ "Height (cm)",
+      weight ~ "Weight (kg)",
+      bmi ~ "BMI (kg/m²)",
+      age_diagnosis ~ "Age of onset (years)",
+      exac_last_year_n ~ "Nº of exacerbations (last year)",
+      crs_w_np ~ "CRSwNP",
+      allergic_rhinitis ~ "Allergic Rhinitis",
+      atopic_dermatitis ~ "Atopic Dermatitis",
+      eosinophilic_esophagitis ~ "Eosinophilic Esophagitis",
+      smoker ~ "Smoking status",
+      miniaqlq ~ "Mini-AQLQ",
+      snot22 ~ "SNOT-22",
+      act ~ "ACT",
+      tai10 ~ "TAI-10",
+      feno_mean ~ "FeNO (ppb)",
+      eosinophils_n ~ "Eosinophils (n)",
+      eosinophils_pct ~ "Eosinophils (%)",
+      ige_total ~ "Total IgE (kU/L)",
+      is_sensitized ~ "Allergic sensitization",
+      pct_pred_fev1 ~ "FEV1 (% predicted)",
+      fev1_fvc ~ "FEV1/FVC (%)"
+    ),
+    type = list(
+      exac_last_year_n ~ "continuous",
+      miniaqlq ~ "continuous",
+      sex ~ "dichotomous",
+      is_sensitized ~ "dichotomous"
+    ),
+    value = list(
+      sex ~ "female",
+      is_sensitized ~ "TRUE"
+    ),
+    missing = "no",
+    by = "is_on_biologic"
+  ) |>
+  add_p() |> 
+  modify_header(label = "**Variable**") |>
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Biologic treatment**") |>
+  bold_labels() |>
+  add_variable_group_header(
+    header = "Comorbidities",
+    variables = any_of(t2_comorbidities)
+  ) |> 
+  remove_bold(columns = label, rows = variable %in% t2_comorbidities) |> 
+  as_gt() |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = label,
+      rows = label == "Comorbidities"
+    )
+  ) |> 
+  tab_options(
+    table.width = pct(80),
+    table.font.size = pct(90)
+    ) |> 
+  opt_vertical_padding(scale = 0.7)
+
+table_strat_biologics |> gtsave("analysis_stratified_biologics.png", path = "../04_results/v2.0")
+```
+
+## Corr plot
+```{r}
+numeric_vars <- master_dataset |>
+  select(!c(snot22, miniaqlq, height, weight, )) |> 
+  select(where(is.numeric))
+
+corr_matrix <- cor(numeric_vars, method = "spearman", use = "complete.obs")
+
+corrplot::corrplot(corr_matrix, method = "color", type = "upper", order = "hclust",
+                   addCoef.col = "black", tl.col = "black", tl.srt = 45, number.cex = 0.7)
 ```
 

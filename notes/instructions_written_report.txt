@@ -1,0 +1,17 @@
+WRITTEN REPORT:
+
+The written report is the first thing the members of the committee will evaluate. Thus, the written report has a very important value and requires a precise and accurate writing, with a formal presentation and linguistic accuracy that is proper of a university level.
+
+Since this is a Master in Bioinformatics, you should provide enough information on the bioinformatic part of the project so that the jury is able to evaluate the value and difficulty of the computational part: description of pipelines, computational workflows, description of computational tools used or developed.
+
+It is recommended to upload the code used for the FMP at Github/GitLab and providing the link in the Methods Section.
+
+Supplementary data file can be submitted as a link.
+
+
+WRITTEN REPORT IN THE FORM OF A SCIENTIFIC PAPER :
+
+Usual structure of a scientific paper: summary (abstract), introduction, material and methods, results and conclusions. Goals should be added at the end of the Introduction section.
+The length of the paper should be less than 15 pages. Additional material that you consider is important for the evaluation of your work should be placed as Supplementary Material. A link to the Supplementary Material should be available within the manuscript.
+The paper should be completely written by the student.
+

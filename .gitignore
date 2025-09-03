@@ -5,7 +5,6 @@
 
 # Ignorar resultados (pueden ser regenerados)
 04_results/
-02_scripts/python_processing
 
 # Ignorar pycache
 02_scripts/python_processing/__pycache__
